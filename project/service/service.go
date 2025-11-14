@@ -8,33 +8,41 @@ import (
 	"github.com/labstack/echo/v4"
 
 	ticketsHttp "tickets/http"
-	"tickets/worker"
+	"tickets/message"
 )
 
 type Service struct {
-	echoRouter *echo.Echo
-	worker    *worker.Worker
+	echoRouter     *echo.Echo
+	messageHandler *message.MessageHandler
 }
 
 func New(
-	spreadsheetsAPI worker.SpreadsheetsAPI,
-	receiptsService worker.ReceiptsService,
-) Service {
-	w := worker.NewWorker(spreadsheetsAPI, receiptsService)
-	echoRouter := ticketsHttp.NewHttpRouter(w)
-		
-
-	return Service{
-		echoRouter: echoRouter,
-		worker:    w,
+	spreadsheetsAPI message.SpreadsheetsAPI,
+	receiptsService message.ReceiptsService,
+) (Service, error) {
+	echoRouter, err := ticketsHttp.NewHttpRouter()
+	if err != nil {
+		return Service{}, err
 	}
+
+	messageHandler := message.NewMessageHandler(spreadsheetsAPI, receiptsService)
+
+	subRecepit, subTracker, err := message.NewMessageConsumers()
+	if err != nil {
+		return Service{}, err
+	}
+
+	service := Service{
+		echoRouter:     echoRouter,
+		messageHandler: messageHandler,
+	}
+
+	go messageHandler.RunSubscribers(context.Background(), subRecepit, subTracker)
+
+	return service, nil
 }
 
 func (s Service) Run(ctx context.Context) error {
-	go func() {
-		s.worker.Run(ctx)
-	}()
-
 	err := s.echoRouter.Start(":8080")
 	if err != nil && !errors.Is(err, stdHTTP.ErrServerClosed) {
 		return err

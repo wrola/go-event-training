@@ -23,10 +23,15 @@ func main() {
 	spreadsheetsAPI := adapters.NewSpreadsheetsAPIClient(apiClients)
 	receiptsService := adapters.NewReceiptsServiceClient(apiClients)
 
-	err = service.New(
+	svc, err := service.New(
 		spreadsheetsAPI,
 		receiptsService,
-	).Run(context.Background())
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	err = svc.Run(context.Background())
 	if err != nil {
 		panic(err)
 	}

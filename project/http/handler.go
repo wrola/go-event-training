@@ -2,7 +2,8 @@ package http
 
 import (
 	"context"
-	worker "tickets/worker"
+
+	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 type SpreadsheetsAPI interface {
@@ -14,5 +15,5 @@ type ReceiptsService interface {
 }
 
 type Handler struct {
-	Worker *worker.Worker
+	publisher message.Publisher
 }
