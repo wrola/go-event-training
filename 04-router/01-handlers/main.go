@@ -30,16 +30,40 @@ func main() {
 	pub, err := redisstream.NewPublisher(redisstream.PublisherConfig{
 		Client: rdb,
 	}, logger)
+	
 	if err != nil {
 		panic(err)
 	}
 
 	// TODO: Add your handler here
+	router.AddHandler(
+		"celsius_to_fahrenheit_handler",
+		"temperature-celsius",
+		sub,
+		"temperature-fahrenheit",
+		pub,
+		func(msg *message.Message) ([]*message.Message, error) {
+			celsius := string(msg.Payload)
 
-	err = router.Run(context.Background())
-	if err != nil {
-		panic(err)
-	}
+			fahrenheit, err := celsiusToFahrenheit(celsius)
+			if err != nil {
+				return nil, err
+			}
+
+			newMsg := message.NewMessage(
+				watermill.NewUUID(),
+				[]byte(fahrenheit),
+			)
+
+			return []*message.Message{newMsg}, nil
+		},
+	)
+
+		err = router.Run(context.Background())
+		if err != nil {
+			panic(err)
+		}
+
 }
 
 func celsiusToFahrenheit(temperature string) (string, error) {
