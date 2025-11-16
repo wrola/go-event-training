@@ -76,36 +76,51 @@ func NewMessageConsumers() (message.Subscriber, message.Subscriber, error) {
 
 // RunSubscribers starts goroutines to process messages from the subscribers
 func (h *MessageHandler) RunSubscribers(ctx context.Context, subRecepit, subTracker message.Subscriber) error {
-	go h.processMessages(ctx, subRecepit, "issue-receipt")
-	go h.processMessages(ctx, subTracker, "append-to-tracker")
+	go h.processMessages(ctx, subRecepit, subTracker)
 
 	return nil
 }
 
 // processMessages subscribes to a topic and processes incoming messages
-func (h *MessageHandler) processMessages(ctx context.Context, sub message.Subscriber, topic string) {
-	messages, err := sub.Subscribe(ctx, topic)
-	if err != nil {
+func (h *MessageHandler) processMessages(ctx context.Context, subTracker message.Subscriber, subRecepit message.Subscriber) {
+	logger := watermill.NewSlogLogger(nil)
+
+	router := message.NewDefaultRouter(logger)
+
+	router.AddConsumerHandler(
+		"handler_ticket_receipt",
+		"issue-receipt",
+		subRecepit,
+		func(msg *message.Message) error {
+				ticketID := string(msg.Payload)
+				err := h.receiptsService.IssueReceipt(ctx, ticketID)
+				if err != nil {
+					return err
+				}
+			
+				return nil
+			},
+	)
+	router.AddConsumerHandler(
+		"handler_append_to_tracker",
+		"append-to-tracker",
+		subTracker,
+		func(msg *message.Message) error {
+				ticketID := string(msg.Payload)
+				err := h.spreadsheetsAPI.AppendRow(ctx, "tickets-to-print", []string{ticketID})
+				if err != nil {
+					return err
+				}
+			
+				return nil
+			},
+	)	
+
+
+	if err := router.Run(ctx); err != nil {
 		panic(err)
-	}
-
-	for msg := range messages {
-		ticketID := string(msg.Payload)
-
-		var err error
-		switch topic {
-		case "append-to-tracker":
-			err = h.spreadsheetsAPI.AppendRow(ctx, "tickets-to-print", []string{ticketID})
-		case "issue-receipt":
-			err = h.receiptsService.IssueReceipt(ctx, ticketID)
-		}
-
-		if err != nil {
-			msg.Nack()
-		} else {
-			msg.Ack()
-		}
-	}
+	}	
+	
 }
 
 func NewMessageProducer() (message.Publisher, error) {
