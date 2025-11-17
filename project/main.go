@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log/slog"
 	"os"
 
@@ -23,15 +22,10 @@ func main() {
 	spreadsheetsAPI := adapters.NewSpreadsheetsAPIClient(apiClients)
 	receiptsService := adapters.NewReceiptsServiceClient(apiClients)
 
-	svc, err := service.New(
+	_, err = service.New(
 		spreadsheetsAPI,
 		receiptsService,
 	)
-	if err != nil {
-		panic(err)
-	}
-
-	err = svc.Run(context.Background())
 	if err != nil {
 		panic(err)
 	}

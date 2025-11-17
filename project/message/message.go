@@ -37,6 +37,9 @@ const (
 type MessageHandler struct {
 	spreadsheetsAPI SpreadsheetsAPI
 	receiptsService ReceiptsService
+	router		  *message.Router
+	subRecepit	  message.Subscriber
+	subTracker	  message.Subscriber
 }
 
 func NewMessageHandler(spreadsheetsAPI SpreadsheetsAPI, receiptsService ReceiptsService) *MessageHandler {
@@ -46,51 +49,49 @@ func NewMessageHandler(spreadsheetsAPI SpreadsheetsAPI, receiptsService Receipts
 	}
 }
 
-func NewMessageConsumers() (message.Subscriber, message.Subscriber, error) {
+func(h *MessageHandler) NewMessageConsumers() (error) {
 	logger := watermill.NewStdLogger(false, false)
 
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: os.Getenv("REDIS_ADDR"),
 	})
 
-	subRecepit, err := redisstream.NewSubscriber(
+	var err error
+	h.subRecepit, err = redisstream.NewSubscriber(
 		redisstream.SubscriberConfig{
 			Client:        redisClient,
 			ConsumerGroup: "receipt-workers",
 		}, logger)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	subTracker, err := redisstream.NewSubscriber(
+	h.subTracker, err = redisstream.NewSubscriber(
 		redisstream.SubscriberConfig{
 			Client:        redisClient,
 			ConsumerGroup: "tracker-workers",
 		}, logger)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
-
-	return subRecepit, subTracker, nil
-}
-
-// RunSubscribers starts goroutines to process messages from the subscribers
-func (h *MessageHandler) RunSubscribers(ctx context.Context, subRecepit, subTracker message.Subscriber) error {
-	go h.processMessages(ctx, subRecepit, subTracker)
 
 	return nil
 }
 
-// processMessages subscribes to a topic and processes incoming messages
-func (h *MessageHandler) processMessages(ctx context.Context, subTracker message.Subscriber, subRecepit message.Subscriber) {
+
+func (h *MessageHandler) StartProcessMessages(ctx context.Context) error {
+	return h.router.Run(ctx)
+}
+
+func (h *MessageHandler) AddConsumers(ctx context.Context) error{
 	logger := watermill.NewSlogLogger(nil)
 
-	router := message.NewDefaultRouter(logger)
+	h.router = message.NewDefaultRouter(logger)
 
-	router.AddConsumerHandler(
+	h.router.AddConsumerHandler(
 		"handler_ticket_receipt",
 		"issue-receipt",
-		subRecepit,
+		h.subRecepit,
 		func(msg *message.Message) error {
 				ticketID := string(msg.Payload)
 				err := h.receiptsService.IssueReceipt(ctx, ticketID)
@@ -101,10 +102,10 @@ func (h *MessageHandler) processMessages(ctx context.Context, subTracker message
 				return nil
 			},
 	)
-	router.AddConsumerHandler(
+	h.router.AddConsumerHandler(
 		"handler_append_to_tracker",
 		"append-to-tracker",
-		subTracker,
+		h.subTracker,
 		func(msg *message.Message) error {
 				ticketID := string(msg.Payload)
 				err := h.spreadsheetsAPI.AppendRow(ctx, "tickets-to-print", []string{ticketID})
@@ -115,12 +116,7 @@ func (h *MessageHandler) processMessages(ctx context.Context, subTracker message
 				return nil
 			},
 	)	
-
-
-	if err := router.Run(ctx); err != nil {
-		panic(err)
-	}	
-	
+	return nil
 }
 
 func NewMessageProducer() (message.Publisher, error) {
@@ -141,3 +137,6 @@ func NewMessageProducer() (message.Publisher, error) {
 	return publisher, nil
 }
 
+func (h *MessageHandler) Running() <-chan struct{} {
+	return h.router.Running()
+}
