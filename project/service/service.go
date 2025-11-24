@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"os/signal"
+	"syscall"
 	"golang.org/x/sync/errgroup"
 	stdHTTP "net/http"
 
@@ -12,40 +13,46 @@ import (
 
 	ticketsHttp "tickets/http"
 	"tickets/message"
+	"tickets/message/event"
 )
 
 type Service struct {
 	echoRouter     *echo.Echo
-	messageHandler *message.MessageHandler
+	messageRouter  *message.Router
 }
 
 func New(
-	spreadsheetsAPI message.SpreadsheetsAPI,
-	receiptsService message.ReceiptsService,
+	spreadsheetsAPI event.SpreadsheetsAPI,
+	receiptsService event.ReceiptsService,
 ) (Service, error) {
 	echoRouter, err := ticketsHttp.NewHttpRouter()
 	if err != nil {
 		return Service{}, err
 	}
 
-	messageHandler := message.NewMessageHandler(spreadsheetsAPI, receiptsService)
+	// Create event handler
+	eventHandler := event.NewMessageHandler(spreadsheetsAPI, receiptsService)
 
-	err = messageHandler.NewMessageConsumers()
+	// Create router with the event handler
+	messageRouter := message.NewRouter(eventHandler)
+
+	// Setup subscribers
+	err = messageRouter.SetupSubscribers()
 	if err != nil {
 		return Service{}, err
 	}
 
 	service := Service{
-		echoRouter:     echoRouter,
-		messageHandler: messageHandler,
+		echoRouter:    echoRouter,
+		messageRouter: messageRouter,
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
 	g, ctx := errgroup.WithContext(ctx)
 
-	// Initialize message consumers (creates the router)
-	err = messageHandler.AddConsumers(ctx)
+	// Add handlers to the router
+	err = messageRouter.AddHandlers()
 	if err != nil {
 		cancel()
 		return Service{}, err
@@ -53,11 +60,11 @@ func New(
 
 	// Start processing messages in a separate goroutine
 	g.Go(func() error {
-		return messageHandler.StartProcessMessages(ctx)
+		return messageRouter.Run(ctx)
 	})
 
 	g.Go(func() error {
-		<-messageHandler.Running()
+		<-messageRouter.Running()
 
 		port := os.Getenv("PORT")
 		if port == "" {
@@ -87,7 +94,7 @@ func New(
 }
 
 func (s Service) Run(ctx context.Context) error {
-	<-s.messageHandler.Running()
+	<-s.messageRouter.Running()
 	port := os.Getenv("PORT")
 	err := s.echoRouter.Start(":" + port)
 
