@@ -51,14 +51,12 @@ func New(
 
 	g, ctx := errgroup.WithContext(ctx)
 
-	// Add handlers to the router
-	err = messageRouter.AddHandlers()
+	err = messageRouter.Initialize()
 	if err != nil {
 		cancel()
 		return Service{}, err
 	}
 
-	// Start processing messages in a separate goroutine
 	g.Go(func() error {
 		return messageRouter.Run(ctx)
 	})

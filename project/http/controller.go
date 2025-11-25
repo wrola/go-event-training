@@ -42,6 +42,7 @@ func (h Handler) PostTicketsConfirmation(c echo.Context) error {
   			}
 
   			msg := message.NewMessage(watermill.NewUUID(), eventPayload)
+			msg.Metadata.Set("correlation_id", c.Request().Header.Get("Correlation-ID"))
   			h.publisher.Publish("TicketBookingConfirmed", msg)
   		case entities.TicketStatusCanceled:
   			event := entities.NewTicketBookingCanceled(ticket.TicketID, ticket.CustomerEmail, ticket.Price)
@@ -52,6 +53,7 @@ func (h Handler) PostTicketsConfirmation(c echo.Context) error {
   			}
 
   			msg := message.NewMessage(watermill.NewUUID(), eventPayload)
+			msg.Metadata.Set("correlation_id", c.Request().Header.Get("Correlation-ID"))
   			h.publisher.Publish("TicketBookingCanceled", msg)
   		default:
   			return echo.NewHTTPError(http.StatusBadRequest, "invalid ticket status")

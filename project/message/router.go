@@ -4,13 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-redisstream/pkg/redisstream"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/redis/go-redis/v9"
 	"tickets/entities"
 	"tickets/message/event"
+	ticketsMiddleware "tickets/message/middleware"
 )
 
 type Router struct {
@@ -55,9 +58,29 @@ func (r *Router) SetupSubscribers() error {
 	return nil
 }
 
-func (r *Router) AddHandlers() error {
+func (r *Router) SetupMiddlewares() error {
+	r.router.AddMiddleware(ticketsMiddleware.AttachCorrelationIdMiddleware)
+	r.router.AddMiddleware(ticketsMiddleware.LogMessagesMiddleware)
+	r.router.AddMiddleware(ticketsMiddleware.SkipPermanentErrorsMiddleware)
+	r.router.AddMiddleware(ticketsMiddleware.HandleErrorMiddleware)
+	r.router.AddMiddleware(middleware.Retry{
+		MaxRetries:      10,
+    	InitialInterval: time.Millisecond * 100,
+    	MaxInterval:     time.Second,
+    	Multiplier:      2,
+		}.Middleware)
+
+	return nil
+}
+
+func (r *Router) Initialize() error {
 	logger := watermill.NewSlogLogger(nil)
 	r.router = message.NewDefaultRouter(logger)
+
+	err := r.SetupMiddlewares()
+	if err != nil {
+		return err
+	}
 
 	r.router.AddConsumerHandler(
 		"handler_ticket_receipt",
