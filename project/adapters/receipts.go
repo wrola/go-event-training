@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"tickets/entities"
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/clients"
@@ -46,4 +47,18 @@ func (c ReceiptsServiceClient) IssueReceipt(ctx context.Context, request entitie
 	default:
 		return fmt.Errorf("unexpected status code for POST receipts-api/receipts: %d", resp.StatusCode())
 	}
+}
+
+type ReceiptsServiceClientStub struct {
+	IssuedReceipts []entities.TicketBookingConfirmed
+	lock sync.Mutex
+}
+
+func (r *ReceiptsServiceClientStub) IssueReceipt(ctx context.Context, request entities.TicketBookingConfirmed) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.IssuedReceipts =  append(r.IssuedReceipts, request)
+
+	return nil
 }

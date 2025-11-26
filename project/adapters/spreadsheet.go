@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/clients"
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/clients/spreadsheets"
@@ -33,6 +34,22 @@ func (c SpreadsheetsAPIClient) AppendRow(ctx context.Context, spreadsheetName st
 	if resp.StatusCode() != http.StatusOK {
 		return fmt.Errorf("failed to post row: unexpected status code %d", resp.StatusCode())
 	}
+
+	return nil
+}
+
+type SpreadsheetsAPIClientStub struct {
+	AppendedRows []spreadsheets.PostSheetsSheetRowsJSONRequestBody
+	lock         sync.Mutex
+}
+
+func (s *SpreadsheetsAPIClientStub) AppendRow(ctx context.Context, spreadsheetName string, row []string) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.AppendedRows = append(s.AppendedRows, spreadsheets.PostSheetsSheetRowsJSONRequestBody{
+		Columns: row,
+	})
 
 	return nil
 }
