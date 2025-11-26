@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 )
 
@@ -14,11 +16,11 @@ type EventsCounter interface {
 }
 
 func NewFollowRequestSentHandler(counter EventsCounter) cqrs.EventHandler {
-
-	e := EventCounter{
-		counter
-	}
-
-	
+	return cqrs.NewEventHandler(
+		"FollowRequestSentHandler",
+		func(ctx context.Context, event *FollowRequestSent) error {
+			return counter.CountEvent()
+		},
+	)
 }
 
