@@ -26,7 +26,7 @@ func main() {
 	spreadsheetsAPI := adapters.NewSpreadsheetsAPIClient(apiClients)
 	receiptsService := adapters.NewReceiptsServiceClient(apiClients)
 
-	_, err = service.New(
+	_, err = service.NewService(
 		spreadsheetsAPI,
 		receiptsService,
 	)

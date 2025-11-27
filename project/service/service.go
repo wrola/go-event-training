@@ -9,57 +9,59 @@ import (
 	"golang.org/x/sync/errgroup"
 	stdHTTP "net/http"
 
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/labstack/echo/v4"
 
 	ticketsHttp "tickets/http"
-	"tickets/message"
+	ticketsMessage "tickets/message"
 	"tickets/message/event"
 )
 
 type Service struct {
-	echoRouter     *echo.Echo
-	messageRouter  *message.Router
+	echoRouter      *echo.Echo
+	eventProcessor  *message.Router
 }
 
-func New(
+func NewService(
 	spreadsheetsAPI event.SpreadsheetsAPI,
 	receiptsService event.ReceiptsService,
 ) (Service, error) {
-	echoRouter, err := ticketsHttp.NewHttpRouter()
+
+	redisClient := ticketsMessage.NewRedisClient()
+	logger := ticketsMessage.NewLogger()
+
+	publisher, err := ticketsMessage.NewMessagePublisher(redisClient, logger)
 	if err != nil {
 		return Service{}, err
 	}
 
-	eventHandler := event.NewMessageHandler(spreadsheetsAPI, receiptsService)
+	eventBus := event.NewEventBus(publisher)
 
-	messageRouter := message.NewRouter(eventHandler)
+	echoRouter, err := ticketsHttp.NewHttpRouter(eventBus)
+	if err != nil {
+		return Service{}, err
+	}
 
-	err = messageRouter.SetupSubscribers()
+	eventProcessor, err := ticketsMessage.NewEventProcessor(receiptsService, spreadsheetsAPI, redisClient, logger)
 	if err != nil {
 		return Service{}, err
 	}
 
 	service := Service{
-		echoRouter:    echoRouter,
-		messageRouter: messageRouter,
+		echoRouter:     echoRouter,
+		eventProcessor: eventProcessor,
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
 	g, ctx := errgroup.WithContext(ctx)
 
-	err = messageRouter.Initialize()
-	if err != nil {
-		cancel()
-		return Service{}, err
-	}
-
 	g.Go(func() error {
-		return messageRouter.Run(ctx)
+		return eventProcessor.Run(ctx)
 	})
 
 	g.Go(func() error {
-		<-messageRouter.Running()
+		<-eventProcessor.Running()
 
 		port := os.Getenv("PORT")
 		if port == "" {
@@ -89,7 +91,7 @@ func New(
 }
 
 func (s Service) Run(ctx context.Context) error {
-	<-s.messageRouter.Running()
+	<-s.eventProcessor.Running()
 	port := os.Getenv("PORT")
 	err := s.echoRouter.Start(":" + port)
 
