@@ -5,23 +5,11 @@ import (
 
 	libHttp "github.com/ThreeDotsLabs/go-event-driven/v2/common/http"
 	"github.com/labstack/echo/v4"
-	"tickets/message"
+	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 )
 
-func NewHttpRouter() (*echo.Echo, error) {
+func NewHttpRouter(eventBus *cqrs.EventBus) (*echo.Echo, error) {
 	e := libHttp.NewEcho()
-
-	pub, err := message.NewMessageProducer()
-	if err != nil {
-		return nil, err
-	}
-
-	eventBus, errEventBus := message.NewEventBus(pub)
-
-	if errEventBus != nil {
-		return nil, errEventBus
-	}
-
 
 	handler := Handler{
 		eventBus: eventBus,
@@ -32,5 +20,6 @@ func NewHttpRouter() (*echo.Echo, error) {
 	
 		return c.String(http.StatusOK, "ok")
 	})
+
 	return e, nil
 }
