@@ -11,13 +11,20 @@ import (
 func NewHttpRouter() (*echo.Echo, error) {
 	e := libHttp.NewEcho()
 
-	publisher, err := message.NewMessageProducer()
+	pub, err := message.NewMessageProducer()
 	if err != nil {
 		return nil, err
 	}
 
+	eventBus, errEventBus := message.NewEventBus(pub)
+
+	if errEventBus != nil {
+		return nil, errEventBus
+	}
+
+
 	handler := Handler{
-		publisher: publisher,
+		eventBus: eventBus,
 	}
 
 	e.POST("/tickets-status", handler.PostTicketsConfirmation)

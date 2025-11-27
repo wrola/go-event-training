@@ -30,13 +30,10 @@ func New(
 		return Service{}, err
 	}
 
-	// Create event handler
 	eventHandler := event.NewMessageHandler(spreadsheetsAPI, receiptsService)
 
-	// Create router with the event handler
 	messageRouter := message.NewRouter(eventHandler)
 
-	// Setup subscribers
 	err = messageRouter.SetupSubscribers()
 	if err != nil {
 		return Service{}, err

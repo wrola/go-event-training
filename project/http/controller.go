@@ -1,17 +1,15 @@
 package http
 
 import (
-	"encoding/json"
 	"net/http"
 	"github.com/labstack/echo/v4"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"tickets/entities"
 )
 
 type Handler struct {
-	publisher message.Publisher
+	eventBus *cqrs.EventBus
 }
 
 type TicketStatusRequest struct {
@@ -35,26 +33,10 @@ func (h Handler) PostTicketsConfirmation(c echo.Context) error {
   	switch ticket.Status {
   		case entities.TicketStatusConfirmed:
   			event := entities.NewTicketBookingConfirmed(ticket.TicketID, ticket.CustomerEmail, ticket.Price)
-  			eventPayload, err := json.Marshal(event)
-
-  			if err != nil {
-  				return err
-  			}
-
-  			msg := message.NewMessage(watermill.NewUUID(), eventPayload)
-			msg.Metadata.Set("correlation_id", c.Request().Header.Get("Correlation-ID"))
-  			h.publisher.Publish("TicketBookingConfirmed", msg)
+  			h.eventBus.Publish(c.Request().Context(), event)
   		case entities.TicketStatusCanceled:
   			event := entities.NewTicketBookingCanceled(ticket.TicketID, ticket.CustomerEmail, ticket.Price)
-  			eventPayload, err := json.Marshal(event)
-
-  			if err != nil {
-  				return err
-  			}
-
-  			msg := message.NewMessage(watermill.NewUUID(), eventPayload)
-			msg.Metadata.Set("correlation_id", c.Request().Header.Get("Correlation-ID"))
-  			h.publisher.Publish("TicketBookingCanceled", msg)
+  			h.eventBus.Publish(c.Request().Context(), event)
   		default:
   			return echo.NewHTTPError(http.StatusBadRequest, "invalid ticket status")
   	}
