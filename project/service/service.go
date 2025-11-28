@@ -6,69 +6,80 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
 	"golang.org/x/sync/errgroup"
 	stdHTTP "net/http"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/labstack/echo/v4"
-
+	"github.com/jmoiron/sqlx" 
+	
 	ticketsHttp "tickets/http"
 	ticketsMessage "tickets/message"
 	"tickets/message/event"
+	"tickets/database"
+
 )
 
 type Service struct {
 	echoRouter      *echo.Echo
 	eventProcessor  *message.Router
+	db *sqlx.DB
 }
 
-func NewService(
+func New(
 	spreadsheetsAPI event.SpreadsheetsAPI,
 	receiptsService event.ReceiptsService,
-) (Service, error) {
+	db *sqlx.DB,
+) (*Service, error) {
 
 	redisClient := ticketsMessage.NewRedisClient()
 	logger := ticketsMessage.NewLogger()
+	ticketRepository := database.NewTicketRepository(db)
+
 
 	publisher, err := ticketsMessage.NewMessagePublisher(redisClient, logger)
 	if err != nil {
-		return Service{}, err
+		return nil, err
 	}
 
 	eventBus := event.NewEventBus(publisher)
 
 	echoRouter, err := ticketsHttp.NewHttpRouter(eventBus)
 	if err != nil {
-		return Service{}, err
+		return nil, err
 	}
 
-	eventProcessor, err := ticketsMessage.NewEventProcessor(receiptsService, spreadsheetsAPI, redisClient, logger)
+	eventProcessor, err := ticketsMessage.NewEventProcessor(receiptsService, spreadsheetsAPI, redisClient, logger, ticketRepository)
 	if err != nil {
-		return Service{}, err
+		return nil, err
 	}
 
-	service := Service{
+	return &Service{
 		echoRouter:     echoRouter,
 		eventProcessor: eventProcessor,
-	}
+		db: db,
+	}, nil
+}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+func (s *Service) Run(ctx context.Context) error {
+	database.InitializeSchema(s.db)
 
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		return eventProcessor.Run(ctx)
+		return s.eventProcessor.Run(ctx)
 	})
 
 	g.Go(func() error {
-		<-eventProcessor.Running()
+		<-s.eventProcessor.Running()
 
 		port := os.Getenv("PORT")
 		if port == "" {
 			port = "8080"
 		}
 
-		err := echoRouter.Start(":" + port)
+		err := s.echoRouter.Start(":" + port)
 		if err != nil && !errors.Is(err, stdHTTP.ErrServerClosed) {
 			return err
 		}
@@ -78,25 +89,23 @@ func NewService(
 
 	g.Go(func() error {
 		<-ctx.Done()
-		cancel()
-		return echoRouter.Shutdown(ctx)
+		return s.echoRouter.Shutdown(context.Background())
 	})
 
-	err = g.Wait()
-	if err != nil {
-		return Service{}, err
-	}
-
-	return service, nil
+	return g.Wait()
 }
 
-func (s Service) Run(ctx context.Context) error {
-	<-s.eventProcessor.Running()
-	port := os.Getenv("PORT")
-	err := s.echoRouter.Start(":" + port)
+func (s *Service) RunWithGracefulShutdown(port string) error {
+	ctx, cancel := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
+	defer cancel()
 
-	if err != nil && !errors.Is(err, stdHTTP.ErrServerClosed) {
-		return err
+	if port != "" {
+		os.Setenv("PORT", port)
 	}
-	return nil
+
+	return s.Run(ctx)
 }

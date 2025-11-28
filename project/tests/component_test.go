@@ -27,12 +27,18 @@ func TestComponent(t *testing.T) {
 	receiptsService := &adapters.ReceiptsServiceClientStub{}
 
 	go func() {
-		_, err := service.New(
+		svc, err := service.New(
 			spreadsheetsAPI,
 			receiptsService,
 		)
 		if err != nil {
 			t.Errorf("service.New() error: %v", err)
+			return
+		}
+
+		err = svc.RunWithGracefulShutdown("")
+		if err != nil {
+			t.Errorf("service.Run() error: %v", err)
 		}
 	}()
 

@@ -39,10 +39,19 @@ func NewMessagePublisher(redisClient *redis.Client, logger watermill.LoggerAdapt
 
 func NewSubscriberConstructor(redisClient *redis.Client, logger watermill.LoggerAdapter) cqrs.EventProcessorSubscriberConstructorFn {
 	return func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-		
-		consumerGroup := "receipt-workers"
-		if params.HandlerName == "AppendToTracker" || params.HandlerName == "CancelTicket" {
+
+		var consumerGroup string
+		switch params.HandlerName {
+		case "IssueReceipt":
+			consumerGroup = "receipt-workers"
+		case "AppendToTracker":
 			consumerGroup = "tracker-workers"
+		case "CancelTicket":
+			consumerGroup = "cancel-workers"
+		case "StoreTicket":
+			consumerGroup = "store-workers"
+		default:
+			consumerGroup = params.HandlerName + "-workers"
 		}
 
 		return redisstream.NewSubscriber(

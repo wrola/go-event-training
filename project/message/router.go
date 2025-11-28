@@ -10,9 +10,10 @@ import (
 	"github.com/redis/go-redis/v9"
 	"tickets/message/event"
 	ticketsMiddleware "tickets/message/middleware"
+	"tickets/database"
 )
 
-func NewEventProcessor(receiptsService event.ReceiptsService, spreadsheetsAPI event.SpreadsheetsAPI, redisClient *redis.Client, logger watermill.LoggerAdapter) (*message.Router, error) {
+func NewEventProcessor(receiptsService event.ReceiptsService, spreadsheetsAPI event.SpreadsheetsAPI, redisClient *redis.Client, logger watermill.LoggerAdapter, ticketRepository database.TicketRepository) (*message.Router, error) {
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
@@ -21,7 +22,7 @@ func NewEventProcessor(receiptsService event.ReceiptsService, spreadsheetsAPI ev
 
 	SetupMiddlewares(router)
 
-	handler := event.NewMessageHandler(spreadsheetsAPI, receiptsService)
+	handler := event.NewMessageHandler(spreadsheetsAPI, receiptsService, ticketRepository)
 
 	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
 		router,
@@ -52,6 +53,10 @@ func NewEventProcessor(receiptsService event.ReceiptsService, spreadsheetsAPI ev
 		cqrs.NewEventHandler(
 			"CancelTicket",
 			handler.CancelTicket,
+		),
+		cqrs.NewEventHandler(
+			"StoreTicket",
+			handler.StoreTicket,
 		),
 	)
 	if err != nil {
