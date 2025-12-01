@@ -45,7 +45,7 @@ func New(
 
 	eventBus := event.NewEventBus(publisher)
 
-	echoRouter, err := ticketsHttp.NewHttpRouter(eventBus)
+	echoRouter, err := ticketsHttp.NewHttpRouter(eventBus, ticketRepository)
 	if err != nil {
 		return nil, err
 	}

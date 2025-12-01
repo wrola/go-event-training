@@ -5,11 +5,24 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
+	"tickets/database"
 	"tickets/entities"
 )
 
 type Handler struct {
-	eventBus *cqrs.EventBus
+	eventBus         *cqrs.EventBus
+	ticketRepository database.TicketRepository
+}
+
+func NewHandler(eventBus *cqrs.EventBus, ticketRepository database.TicketRepository) Handler {
+	if eventBus == nil {
+		panic("eventBus is required")
+	}
+
+	return Handler{
+		eventBus:         eventBus,
+		ticketRepository: ticketRepository,
+	}
 }
 
 type TicketStatusRequest struct {
@@ -43,4 +56,13 @@ func (h Handler) PostTicketsConfirmation(c echo.Context) error {
   }
 
 	return c.NoContent(http.StatusOK)
+}
+
+func (h Handler) GetAllTickets(c echo.Context) error {
+	tickets, err := h.ticketRepository.GetAll(c.Request().Context())
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, tickets)
 }

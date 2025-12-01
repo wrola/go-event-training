@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"tickets/adapters"
+	"tickets/database"
 	"tickets/entities"
 	ticketsHttp "tickets/http"
 	"tickets/service"
@@ -25,11 +26,13 @@ func TestComponent(t *testing.T) {
 
 	spreadsheetsAPI := &adapters.SpreadsheetsAPIClientStub{}
 	receiptsService := &adapters.ReceiptsServiceClientStub{}
+	db := database.NewDatabaseConnection()
 
 	go func() {
 		svc, err := service.New(
 			spreadsheetsAPI,
 			receiptsService,
+			db,
 		)
 		if err != nil {
 			t.Errorf("service.New() error: %v", err)
@@ -76,6 +79,71 @@ func TestComponent(t *testing.T) {
 		sendTicketsStatus(t, ticket)
 
 		assertRowAddedToSpreadsheet(t, spreadsheetsAPI, ticket, "tickets-to-refund")
+	})
+
+	t.Run("get all tickets", func(t *testing.T) {
+		// Create some test tickets
+		ticket1 := ticketsHttp.TicketStatusRequest{
+			TicketID:      "get-all-test-1",
+			CustomerEmail: "test1@example.com",
+			Price: entities.Money{
+				Amount:   "25.50",
+				Currency: "USD",
+			},
+			Status: entities.TicketStatusConfirmed,
+		}
+
+		ticket2 := ticketsHttp.TicketStatusRequest{
+			TicketID:      "get-all-test-2",
+			CustomerEmail: "test2@example.com",
+			Price: entities.Money{
+				Amount:   "35.75",
+				Currency: "EUR",
+			},
+			Status: entities.TicketStatusConfirmed,
+		}
+
+		// Send tickets
+		sendTicketsStatus(t, ticket1)
+		sendTicketsStatus(t, ticket2)
+
+		// Wait for tickets to be stored
+		time.Sleep(1 * time.Second)
+
+		// Get all tickets
+		resp, err := http.Get("http://localhost:8080/tickets")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		// Parse response
+		var tickets []entities.Ticket
+		err = json.NewDecoder(resp.Body).Decode(&tickets)
+		require.NoError(t, err)
+
+		// Verify we have tickets (at least the ones we just created)
+		require.GreaterOrEqual(t, len(tickets), 2, "should have at least 2 tickets")
+
+		// Find our test tickets
+		var foundTicket1, foundTicket2 bool
+		for _, ticket := range tickets {
+			if ticket.TicketID == ticket1.TicketID {
+				foundTicket1 = true
+				assert.Equal(t, ticket1.CustomerEmail, ticket.CustomerEmail)
+				assert.Equal(t, ticket1.Price.Amount, ticket.Price.Amount)
+				assert.Equal(t, ticket1.Price.Currency, ticket.Price.Currency)
+			}
+			if ticket.TicketID == ticket2.TicketID {
+				foundTicket2 = true
+				assert.Equal(t, ticket2.CustomerEmail, ticket.CustomerEmail)
+				assert.Equal(t, ticket2.Price.Amount, ticket.Price.Amount)
+				assert.Equal(t, ticket2.Price.Currency, ticket.Price.Currency)
+			}
+		}
+
+		assert.True(t, foundTicket1, "ticket1 should be in the response")
+		assert.True(t, foundTicket2, "ticket2 should be in the response")
 	})
 }
 

@@ -58,7 +58,12 @@ func NewEventProcessor(receiptsService event.ReceiptsService, spreadsheetsAPI ev
 			"StoreTicket",
 			handler.StoreTicket,
 		),
+		cqrs.NewEventHandler(
+			"RemoveCancledTicket",
+			handler.RemoveCanceledTicket,
+		),
 	)
+	
 	if err != nil {
 		return nil, err
 	}
