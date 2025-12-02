@@ -1,4 +1,4 @@
-exercise_id = "5d5d323b-02d7-4f89-bb33-6af379827bce"
-directory = "project"
+exercise_id = "13822e30-4bc7-4408-b6cd-aa611cdcaffe"
+directory = "10-at-least-once-delivery/10-idempotency-key-in-api"
 is_text_only = false
 is_optional = false

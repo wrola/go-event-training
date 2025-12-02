@@ -30,6 +30,7 @@ type Service struct {
 func New(
 	spreadsheetsAPI event.SpreadsheetsAPI,
 	receiptsService event.ReceiptsService,
+	filesAPI event.FilesAPI,
 	db *sqlx.DB,
 ) (*Service, error) {
 
@@ -50,7 +51,7 @@ func New(
 		return nil, err
 	}
 
-	eventProcessor, err := ticketsMessage.NewEventProcessor(receiptsService, spreadsheetsAPI, redisClient, logger, ticketRepository)
+	eventProcessor, err := ticketsMessage.NewEventProcessor(receiptsService, spreadsheetsAPI, filesAPI, redisClient, logger, ticketRepository, eventBus)
 	if err != nil {
 		return nil, err
 	}

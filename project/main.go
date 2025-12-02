@@ -30,14 +30,16 @@ func main() {
 
 	spreadsheetsAPI := adapters.NewSpreadsheetsAPIClient(apiClients)
 	receiptsService := adapters.NewReceiptsServiceClient(apiClients)
+	filesAPI := adapters.NewFilesAPIClient(apiClients)
 
 	db := database.NewDatabaseConnection()
 	defer db.Close()
-	
+
 
 	svc, err := service.New(
 		spreadsheetsAPI,
 		receiptsService,
+		filesAPI,
 		db,
 	)
 	if err != nil {

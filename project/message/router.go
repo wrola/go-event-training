@@ -13,7 +13,7 @@ import (
 	"tickets/database"
 )
 
-func NewEventProcessor(receiptsService event.ReceiptsService, spreadsheetsAPI event.SpreadsheetsAPI, redisClient *redis.Client, logger watermill.LoggerAdapter, ticketRepository database.TicketRepository) (*message.Router, error) {
+func NewEventProcessor(receiptsService event.ReceiptsService, spreadsheetsAPI event.SpreadsheetsAPI, filesAPI event.FilesAPI, redisClient *redis.Client, logger watermill.LoggerAdapter, ticketRepository database.TicketRepository, eventBus *cqrs.EventBus) (*message.Router, error) {
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
@@ -22,7 +22,7 @@ func NewEventProcessor(receiptsService event.ReceiptsService, spreadsheetsAPI ev
 
 	SetupMiddlewares(router)
 
-	handler := event.NewMessageHandler(spreadsheetsAPI, receiptsService, ticketRepository)
+	handler := event.NewMessageHandler(spreadsheetsAPI, receiptsService, ticketRepository, filesAPI, eventBus)
 
 	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
 		router,
@@ -62,8 +62,12 @@ func NewEventProcessor(receiptsService event.ReceiptsService, spreadsheetsAPI ev
 			"RemoveCancledTicket",
 			handler.RemoveCanceledTicket,
 		),
+		cqrs.NewEventHandler(
+			"StoreTicketFile",
+			handler.StoreTicketFile,
+		),
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
