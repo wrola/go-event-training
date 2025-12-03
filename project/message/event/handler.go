@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 
+	"github.com/ThreeDotsLabs/go-event-driven/v2/common/clients/dead_nation"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"tickets/entities"
 )
@@ -24,15 +25,37 @@ type FilesAPI interface {
 	StoreFile(ctx context.Context, fileID string, fileContent string) error
 }
 
+type ShowsRepository interface {
+	ShowByID(ctx context.Context, showID string) (entities.Show, error)
+}
+
+type DeadNationAPI interface {
+	PostTicketBookingWithResponse(
+		ctx context.Context,
+		body dead_nation.PostTicketBookingJSONRequestBody,
+		reqEditors ...dead_nation.RequestEditorFn,
+	) (*dead_nation.PostTicketBookingResponse, error)
+}
+
 type MessageHandler struct {
 	spreadsheetsAPI  SpreadsheetsAPI
 	receiptsService  ReceiptsService
 	ticketRepository TicketRepository
 	filesAPI         FilesAPI
-	eventBus 		*cqrs.EventBus
+	showsRepository  ShowsRepository
+	deadNationAPI    DeadNationAPI
+	eventBus         *cqrs.EventBus
 }
 
-func NewMessageHandler(spreadsheetsAPI SpreadsheetsAPI, receiptsService ReceiptsService, ticketRepository TicketRepository, filesAPI FilesAPI, eventBus *cqrs.EventBus) *MessageHandler {
+func NewMessageHandler(
+	spreadsheetsAPI SpreadsheetsAPI,
+	receiptsService ReceiptsService,
+	ticketRepository TicketRepository,
+	filesAPI FilesAPI,
+	showsRepository ShowsRepository,
+	deadNationAPI DeadNationAPI,
+	eventBus *cqrs.EventBus,
+) *MessageHandler {
 	if spreadsheetsAPI == nil {
 		panic("missing spreadsheetsAPI")
 	}
@@ -40,13 +63,19 @@ func NewMessageHandler(spreadsheetsAPI SpreadsheetsAPI, receiptsService Receipts
 		panic("missing receiptsService")
 	}
 	if ticketRepository == nil {
-		panic("Missing ticket repository")
+		panic("missing ticketRepository")
 	}
 	if filesAPI == nil {
 		panic("missing filesAPI")
 	}
+	if showsRepository == nil {
+		panic("missing showsRepository")
+	}
+	if deadNationAPI == nil {
+		panic("missing deadNationAPI")
+	}
 	if eventBus == nil {
-		panic("Missing eventBus")
+		panic("missing eventBus")
 	}
 
 	return &MessageHandler{
@@ -54,6 +83,8 @@ func NewMessageHandler(spreadsheetsAPI SpreadsheetsAPI, receiptsService Receipts
 		receiptsService:  receiptsService,
 		ticketRepository: ticketRepository,
 		filesAPI:         filesAPI,
+		showsRepository:  showsRepository,
+		deadNationAPI:    deadNationAPI,
 		eventBus:         eventBus,
 	}
 }

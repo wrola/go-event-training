@@ -23,6 +23,7 @@ require (
 	github.com/Joker/jade v1.1.3 // indirect
 	github.com/Rican7/retry v0.3.1 // indirect
 	github.com/Shopify/goreferrer v0.0.0-20250513162709-b78e2829e40b // indirect
+	github.com/ThreeDotsLabs/watermill-sql/v3 v3.1.0 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect

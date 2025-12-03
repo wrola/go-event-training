@@ -10,27 +10,29 @@ import (
 	"golang.org/x/sync/errgroup"
 	stdHTTP "net/http"
 
+	"github.com/ThreeDotsLabs/watermill/components/forwarder"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/labstack/echo/v4"
-	"github.com/jmoiron/sqlx" 
-	
+	"github.com/jmoiron/sqlx"
+
 	ticketsHttp "tickets/http"
 	ticketsMessage "tickets/message"
 	"tickets/message/event"
 	"tickets/database"
-
 )
 
 type Service struct {
 	echoRouter      *echo.Echo
 	eventProcessor  *message.Router
-	db *sqlx.DB
+	forwarder       *forwarder.Forwarder
+	db              *sqlx.DB
 }
 
 func New(
 	spreadsheetsAPI event.SpreadsheetsAPI,
 	receiptsService event.ReceiptsService,
 	filesAPI event.FilesAPI,
+	deadNationAPI event.DeadNationAPI,
 	db *sqlx.DB,
 ) (*Service, error) {
 
@@ -38,11 +40,14 @@ func New(
 	logger := ticketsMessage.NewLogger()
 	ticketRepository := database.NewTicketRepository(db)
 	showsRepository := database.NewShowsRepository(db)
-	bookingsRepository := database.NewBookingsRepository(db)
-	forwarder := 
-
+	bookingsRepository := database.NewBookingsRepository(db, logger)
 
 	publisher, err := ticketsMessage.NewMessagePublisher(redisClient, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	fwd, err := database.NewForwarder(db, publisher, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +59,17 @@ func New(
 		return nil, err
 	}
 
-	eventProcessor, err := ticketsMessage.NewEventProcessor(receiptsService, spreadsheetsAPI, filesAPI, redisClient, logger, ticketRepository, eventBus)
+	eventProcessor, err := ticketsMessage.NewEventProcessor(
+		receiptsService,
+		spreadsheetsAPI,
+		filesAPI,
+		showsRepository,
+		deadNationAPI,
+		redisClient,
+		logger,
+		ticketRepository,
+		eventBus,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +77,8 @@ func New(
 	return &Service{
 		echoRouter:     echoRouter,
 		eventProcessor: eventProcessor,
-		db: db,
+		forwarder:      fwd,
+		db:             db,
 	}, nil
 }
 
@@ -76,7 +92,12 @@ func (s *Service) Run(ctx context.Context) error {
 	})
 
 	g.Go(func() error {
+		return s.forwarder.Run(ctx)
+	})
+
+	g.Go(func() error {
 		<-s.eventProcessor.Running()
+		<-s.forwarder.Running()
 
 		port := os.Getenv("PORT")
 		if port == "" {

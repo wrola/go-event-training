@@ -13,7 +13,17 @@ import (
 	"tickets/database"
 )
 
-func NewEventProcessor(receiptsService event.ReceiptsService, spreadsheetsAPI event.SpreadsheetsAPI, filesAPI event.FilesAPI, redisClient *redis.Client, logger watermill.LoggerAdapter, ticketRepository database.TicketRepository, eventBus *cqrs.EventBus) (*message.Router, error) {
+func NewEventProcessor(
+	receiptsService event.ReceiptsService,
+	spreadsheetsAPI event.SpreadsheetsAPI,
+	filesAPI event.FilesAPI,
+	showsRepository database.ShowsRepository,
+	deadNationAPI event.DeadNationAPI,
+	redisClient *redis.Client,
+	logger watermill.LoggerAdapter,
+	ticketRepository database.TicketRepository,
+	eventBus *cqrs.EventBus,
+) (*message.Router, error) {
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
@@ -22,7 +32,15 @@ func NewEventProcessor(receiptsService event.ReceiptsService, spreadsheetsAPI ev
 
 	SetupMiddlewares(router)
 
-	handler := event.NewMessageHandler(spreadsheetsAPI, receiptsService, ticketRepository, filesAPI, eventBus)
+	handler := event.NewMessageHandler(
+		spreadsheetsAPI,
+		receiptsService,
+		ticketRepository,
+		filesAPI,
+		showsRepository,
+		deadNationAPI,
+		eventBus,
+	)
 
 	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
 		router,
@@ -65,6 +83,10 @@ func NewEventProcessor(receiptsService event.ReceiptsService, spreadsheetsAPI ev
 		cqrs.NewEventHandler(
 			"StoreTicketFile",
 			handler.StoreTicketFile,
+		),
+		cqrs.NewEventHandler(
+			"BookingMade",
+			handler.BookingMadeUpdate,
 		),
 	)
 

@@ -31,6 +31,7 @@ func main() {
 	spreadsheetsAPI := adapters.NewSpreadsheetsAPIClient(apiClients)
 	receiptsService := adapters.NewReceiptsServiceClient(apiClients)
 	filesAPI := adapters.NewFilesAPIClient(apiClients)
+	deadNationAPI := apiClients.DeadNation
 
 	db := database.NewDatabaseConnection()
 	defer db.Close()
@@ -40,6 +41,7 @@ func main() {
 		spreadsheetsAPI,
 		receiptsService,
 		filesAPI,
+		deadNationAPI,
 		db,
 	)
 	if err != nil {
