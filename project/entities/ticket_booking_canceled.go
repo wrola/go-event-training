@@ -15,3 +15,12 @@ func NewTicketBookingCanceled(ticketID, customerEmail string, price Money) Ticke
 		Price:         price,
 	}
 }
+
+func NewTicketBookingCanceledWithIdempotencyKey(ticketID, customerEmail string, price Money, idempotencyKey string) TicketBookingCanceled {
+	return TicketBookingCanceled{
+		Header:        NewMessageHeaderWithIdempotencyKey(idempotencyKey),
+		TicketID:      ticketID,
+		CustomerEmail: customerEmail,
+		Price:         price,
+	}
+}

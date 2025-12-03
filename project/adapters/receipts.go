@@ -25,11 +25,13 @@ func NewReceiptsServiceClient(clients *clients.Clients) *ReceiptsServiceClient {
 }
 
 func (c ReceiptsServiceClient) IssueReceipt(ctx context.Context, request entities.TicketBookingConfirmed) error {
+	idempotencyKey := request.Header.IdempotencyKey
 	resp, err := c.clients.Receipts.PutReceiptsWithResponse(ctx, receipts.CreateReceipt{
-	TicketId: request.TicketID,
-	Price: receipts.Money{
-		MoneyAmount:   request.Price.Amount,
-		MoneyCurrency: request.Price.Currency,
+		IdempotencyKey: &idempotencyKey,
+		TicketId:       request.TicketID,
+		Price: receipts.Money{
+			MoneyAmount:   request.Price.Amount,
+			MoneyCurrency: request.Price.Currency,
 		},
 	})
 

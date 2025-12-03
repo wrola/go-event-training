@@ -33,7 +33,7 @@ func (p *PalPayClient) Charge(req ChargeRequest) error {
 		return err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
-
+	httpReq.Header.Set("Idempotency-Key", req.IdempotencyKey)
 	resp, err := p.HttpClient.RoundTrip(httpReq)
 	if err != nil {
 		return err

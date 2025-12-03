@@ -26,12 +26,14 @@ func TestComponent(t *testing.T) {
 
 	spreadsheetsAPI := &adapters.SpreadsheetsAPIClientStub{}
 	receiptsService := &adapters.ReceiptsServiceClientStub{}
+	fileAPI := &adapters.FilesAPIClientStub{}
 	db := database.NewDatabaseConnection()
 
 	go func() {
 		svc, err := service.New(
 			spreadsheetsAPI,
 			receiptsService,
+			fileAPI
 			db,
 		)
 		if err != nil {
@@ -82,7 +84,6 @@ func TestComponent(t *testing.T) {
 	})
 
 	t.Run("get all tickets", func(t *testing.T) {
-		// Create some test tickets
 		ticket1 := ticketsHttp.TicketStatusRequest{
 			TicketID:      "get-all-test-1",
 			CustomerEmail: "test1@example.com",
@@ -181,6 +182,7 @@ func sendTicketsStatus(t *testing.T, req ticketsHttp.TicketStatusRequest) {
 	require.NoError(t, err)
 
 	correlationID := shortuuid.New()
+	idempotencyKey := shortuuid.New()
 
 	httpReq, err := http.NewRequest(
 		http.MethodPost,
@@ -190,6 +192,7 @@ func sendTicketsStatus(t *testing.T, req ticketsHttp.TicketStatusRequest) {
 	require.NoError(t, err)
 
 	httpReq.Header.Set("Correlation-ID", correlationID)
+	httpReq.Header.Set("Idempotency-Key", idempotencyKey)
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(httpReq)

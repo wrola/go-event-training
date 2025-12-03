@@ -15,3 +15,12 @@ func NewTicketBookingConfirmed(ticketID, customerEmail string, price Money) Tick
 		Price:         price,
 	}
 }
+
+func NewTicketBookingConfirmedWithIdempotencyKey(ticketID, customerEmail string, price Money, idempotencyKey string) TicketBookingConfirmed {
+	return TicketBookingConfirmed{
+		Header:        NewMessageHeaderWithIdempotencyKey(idempotencyKey),
+		TicketID:      ticketID,
+		CustomerEmail: customerEmail,
+		Price:         price,
+	}
+}

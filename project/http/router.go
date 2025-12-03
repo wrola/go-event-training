@@ -9,13 +9,15 @@ import (
 	"tickets/database"
 )
 
-func NewHttpRouter(eventBus *cqrs.EventBus, ticketRepository database.TicketRepository) (*echo.Echo, error) {
+func NewHttpRouter(eventBus *cqrs.EventBus, ticketRepository database.TicketRepository, showsRepository database.ShowsRepository, bookingsRepository database.BookingsRepository) (*echo.Echo, error) {
 	e := libHttp.NewEcho()
 
-	handler := NewHandler(eventBus, ticketRepository)
+	handler := NewHandler(eventBus, ticketRepository, showsRepository, bookingsRepository)
 
 	e.GET("/tickets", handler.GetAllTickets)
 	e.POST("/tickets-status", handler.PostTicketsConfirmation)
+	e.POST("/shows", handler.CreateShow)
+	e.POST("/book-tickets", handler.BookTickets)
 	e.GET("/health", func(c echo.Context) error {
 	
 		return c.String(http.StatusOK, "ok")

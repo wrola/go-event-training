@@ -37,6 +37,9 @@ func New(
 	redisClient := ticketsMessage.NewRedisClient()
 	logger := ticketsMessage.NewLogger()
 	ticketRepository := database.NewTicketRepository(db)
+	showsRepository := database.NewShowsRepository(db)
+	bookingsRepository := database.NewBookingsRepository(db)
+	forwarder := 
 
 
 	publisher, err := ticketsMessage.NewMessagePublisher(redisClient, logger)
@@ -46,7 +49,7 @@ func New(
 
 	eventBus := event.NewEventBus(publisher)
 
-	echoRouter, err := ticketsHttp.NewHttpRouter(eventBus, ticketRepository)
+	echoRouter, err := ticketsHttp.NewHttpRouter(eventBus, ticketRepository, showsRepository, bookingsRepository)
 	if err != nil {
 		return nil, err
 	}

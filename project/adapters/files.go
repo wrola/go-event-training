@@ -4,10 +4,25 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/clients"
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/log"
 )
+
+type FilesAPIClientStub struct {
+	SaveFiles []string
+	lock         sync.Mutex
+}
+
+func (f *FilesAPIClientStub) StoreFile(ctx context.Context, fileID string, fileContent string) error {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	f.SaveFiles = append(f.SaveFiles, fileID) 
+
+	return nil
+}
 
 type FilesAPIClient struct {
 	clients *clients.Clients
