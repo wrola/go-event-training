@@ -2,8 +2,8 @@ package database
 
 import (
 	"context"
-	"github.com/jmoiron/sqlx" 
-	"tickets/entities"
+	"github.com/jmoiron/sqlx"
+	"tickets/entities/models"
 )
 
 type TicketRepository struct { 
@@ -15,7 +15,7 @@ func NewTicketRepository(db *sqlx.DB) TicketRepository {
 	return TicketRepository{db: db}
 }
 
-func (t TicketRepository) Add (ctx context.Context, ticket entities.Ticket) (error) {
+func (t TicketRepository) Add (ctx context.Context, ticket models.Ticket) (error) {
 
 	_, err := t.db.NamedExecContext(
 	ctx,
@@ -35,7 +35,7 @@ func (t TicketRepository) Add (ctx context.Context, ticket entities.Ticket) (err
 	return nil
 }
 
-func (t TicketRepository) Remove (ctx context.Context, ticket entities.Ticket) (error) {
+func (t TicketRepository) Remove (ctx context.Context, ticket models.Ticket) (error) {
 	_, err := t.db.NamedExecContext(
 		ctx, 
 		`DELETE FROM 
@@ -51,8 +51,8 @@ func (t TicketRepository) Remove (ctx context.Context, ticket entities.Ticket) (
 	return nil
 }
 
-func (t TicketRepository) GetAll (ctx context.Context) ([]entities.Ticket, error) {
-	var returnTickets []entities.Ticket
+func (t TicketRepository) GetAll (ctx context.Context) ([]models.Ticket, error) {
+	var returnTickets []models.Ticket
 	err := t.db.SelectContext(
 		ctx,
 		&returnTickets, 

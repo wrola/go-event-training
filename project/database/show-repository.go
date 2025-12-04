@@ -6,7 +6,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"tickets/entities"
+	"tickets/entities/models"
 )
 
 type ShowsRepository struct {
@@ -21,7 +21,7 @@ func NewShowsRepository(db *sqlx.DB) ShowsRepository {
 	return ShowsRepository{db: db}
 }
 
-func (s ShowsRepository) AddShow(ctx context.Context, show entities.Show) error {
+func (s ShowsRepository) AddShow(ctx context.Context, show models.Show) error {
 	_, err := s.db.NamedExecContext(ctx, `
 		INSERT INTO 
 		    shows (show_id, dead_nation_id, number_of_tickets, start_time, title, venue) 
@@ -34,11 +34,11 @@ func (s ShowsRepository) AddShow(ctx context.Context, show entities.Show) error 
 	return nil
 }
 
-func (s ShowsRepository) ShowByID(ctx context.Context, showID string) (entities.Show, error) {
-	var show entities.Show
+func (s ShowsRepository) ShowByID(ctx context.Context, showID string) (models.Show, error) {
+	var show models.Show
 	err := s.db.GetContext(ctx, &show, `SELECT * FROM shows WHERE show_id = $1`, showID)
 	if err != nil {
-		return entities.Show{}, err
+		return models.Show{}, err
 	}
 
 	return show, nil

@@ -8,7 +8,8 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"tickets/database"
-	"tickets/entities"
+	"tickets/entities/models"
+	"tickets/entities/events"
 )
 
 type Handler struct {
@@ -34,8 +35,8 @@ func NewHandler(eventBus *cqrs.EventBus, ticketRepository database.TicketReposit
 type TicketStatusRequest struct {
 	TicketID string `json:"ticket_id"`
 	CustomerEmail string `json:"customer_email"`
-	Price entities.Money `json:"price"`
-	Status entities.TicketBookingStatus `json:"status"`
+	Price models.Money `json:"price"`
+	Status models.TicketBookingStatus `json:"status"`
 }
 
 type ticketsConfirmationRequest struct {
@@ -74,18 +75,18 @@ func (h Handler) PostTicketsConfirmation(c echo.Context) error {
 
 	for _, ticket := range request.Tickets {
   	switch ticket.Status {
-  		case entities.TicketStatusConfirmed:
+  		case models.TicketStatusConfirmed:
   			ticketIdempotencyKey := idempotencyKey + ticket.TicketID
-  			event := entities.NewTicketBookingConfirmedWithIdempotencyKey(
+  			event := events.NewTicketBookingConfirmedWithIdempotencyKey(
   				ticket.TicketID,
   				ticket.CustomerEmail,
   				ticket.Price,
   				ticketIdempotencyKey,
   			)
   			h.eventBus.Publish(c.Request().Context(), event)
-  		case entities.TicketStatusCanceled:
+  		case models.TicketStatusCanceled:
   			ticketIdempotencyKey := idempotencyKey + ticket.TicketID
-  			event := entities.NewTicketBookingCanceledWithIdempotencyKey(
+  			event := events.NewTicketBookingCanceledWithIdempotencyKey(
   				ticket.TicketID,
   				ticket.CustomerEmail,
   				ticket.Price,
@@ -120,7 +121,7 @@ func (h Handler) CreateShow(c echo.Context) error {
 	// 	return echo.NewHTTPError(http.StatusBadRequest, "Idempotency-Key header is required")
 	// }
 
-	show := entities.NewShow(
+	show := models.NewShow(
 		request.ShowID,
 		request.DeadNationID,
 		request.NumberOfTickets,
@@ -143,7 +144,7 @@ func (h Handler) BookTickets(c echo.Context) error {
 		return err
 	}
 
-	booking := entities.NewBooking(
+	booking := models.NewBooking(
 		"", // booking_id will be auto-generated
 		request.ShowID,
 		request.NumberOfTickets,

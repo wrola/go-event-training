@@ -16,8 +16,8 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	ticketsHttp "tickets/http"
-	ticketsMessage "tickets/message"
-	"tickets/message/event"
+	ticketsEvents "tickets/events"
+	"tickets/events/handler"
 	"tickets/database"
 )
 
@@ -29,20 +29,20 @@ type Service struct {
 }
 
 func New(
-	spreadsheetsAPI event.SpreadsheetsAPI,
-	receiptsService event.ReceiptsService,
-	filesAPI event.FilesAPI,
-	deadNationAPI event.DeadNationAPI,
+	spreadsheetsAPI handler.SpreadsheetsAPI,
+	receiptsService handler.ReceiptsService,
+	filesAPI handler.FilesAPI,
+	deadNationAPI handler.DeadNationAPI,
 	db *sqlx.DB,
 ) (*Service, error) {
 
-	redisClient := ticketsMessage.NewRedisClient()
-	logger := ticketsMessage.NewLogger()
+	redisClient := ticketsEvents.NewRedisClient()
+	logger := ticketsEvents.NewLogger()
 	ticketRepository := database.NewTicketRepository(db)
 	showsRepository := database.NewShowsRepository(db)
 	bookingsRepository := database.NewBookingsRepository(db, logger)
 
-	publisher, err := ticketsMessage.NewMessagePublisher(redisClient, logger)
+	publisher, err := ticketsEvents.NewMessagePublisher(redisClient, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -52,14 +52,14 @@ func New(
 		return nil, err
 	}
 
-	eventBus := event.NewEventBus(publisher)
+	eventBus := handler.NewEventBus(publisher)
 
 	echoRouter, err := ticketsHttp.NewHttpRouter(eventBus, ticketRepository, showsRepository, bookingsRepository)
 	if err != nil {
 		return nil, err
 	}
 
-	eventProcessor, err := ticketsMessage.NewEventProcessor(
+	eventProcessor, err := ticketsEvents.NewEventProcessor(
 		receiptsService,
 		spreadsheetsAPI,
 		filesAPI,

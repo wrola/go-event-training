@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sync"
 
-	"tickets/entities"
+	"tickets/entities/events"
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/clients"
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/clients/receipts"
 )
@@ -24,7 +24,7 @@ func NewReceiptsServiceClient(clients *clients.Clients) *ReceiptsServiceClient {
 	return &ReceiptsServiceClient{clients: clients}
 }
 
-func (c ReceiptsServiceClient) IssueReceipt(ctx context.Context, request entities.TicketBookingConfirmed) error {
+func (c ReceiptsServiceClient) IssueReceipt(ctx context.Context, request events.TicketBookingConfirmed) error {
 	idempotencyKey := request.Header.IdempotencyKey
 	resp, err := c.clients.Receipts.PutReceiptsWithResponse(ctx, receipts.CreateReceipt{
 		IdempotencyKey: &idempotencyKey,
@@ -52,11 +52,11 @@ func (c ReceiptsServiceClient) IssueReceipt(ctx context.Context, request entitie
 }
 
 type ReceiptsServiceClientStub struct {
-	IssuedReceipts []entities.TicketBookingConfirmed
+	IssuedReceipts []events.TicketBookingConfirmed
 	lock sync.Mutex
 }
 
-func (r *ReceiptsServiceClientStub) IssueReceipt(ctx context.Context, request entities.TicketBookingConfirmed) error {
+func (r *ReceiptsServiceClientStub) IssueReceipt(ctx context.Context, request events.TicketBookingConfirmed) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
