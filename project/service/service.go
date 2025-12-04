@@ -18,14 +18,16 @@ import (
 	ticketsHttp "tickets/http"
 	ticketsEvents "tickets/events"
 	"tickets/events/handler"
+	ticketsCommands "tickets/commands"
 	"tickets/database"
 )
 
 type Service struct {
-	echoRouter      *echo.Echo
-	eventProcessor  *message.Router
-	forwarder       *forwarder.Forwarder
-	db              *sqlx.DB
+	echoRouter       *echo.Echo
+	eventProcessor   *message.Router
+	commandProcessor *message.Router
+	forwarder        *forwarder.Forwarder
+	db               *sqlx.DB
 }
 
 func New(
@@ -53,8 +55,9 @@ func New(
 	}
 
 	eventBus := handler.NewEventBus(publisher)
+	commandBus := handler.NewCommandBus(publisher)
 
-	echoRouter, err := ticketsHttp.NewHttpRouter(eventBus, ticketRepository, showsRepository, bookingsRepository)
+	echoRouter, err := ticketsHttp.NewHttpRouter(eventBus, commandBus, ticketRepository, showsRepository, bookingsRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -74,11 +77,21 @@ func New(
 		return nil, err
 	}
 
+	commandProcessor, err := ticketsCommands.NewCommandProcessor(
+		redisClient,
+		logger,
+		receiptsService,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Service{
-		echoRouter:     echoRouter,
-		eventProcessor: eventProcessor,
-		forwarder:      fwd,
-		db:             db,
+		echoRouter:       echoRouter,
+		eventProcessor:   eventProcessor,
+		commandProcessor: commandProcessor,
+		forwarder:        fwd,
+		db:               db,
 	}, nil
 }
 
@@ -92,11 +105,16 @@ func (s *Service) Run(ctx context.Context) error {
 	})
 
 	g.Go(func() error {
+		return s.commandProcessor.Run(ctx)
+	})
+
+	g.Go(func() error {
 		return s.forwarder.Run(ctx)
 	})
 
 	g.Go(func() error {
 		<-s.eventProcessor.Running()
+		<-s.commandProcessor.Running()
 		<-s.forwarder.Running()
 
 		port := os.Getenv("PORT")

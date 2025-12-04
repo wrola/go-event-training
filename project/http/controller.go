@@ -10,22 +10,28 @@ import (
 	"tickets/database"
 	"tickets/entities/models"
 	"tickets/entities/events"
+	"tickets/entities/commands"
 )
 
 type Handler struct {
 	eventBus           *cqrs.EventBus
+	commandBus         *cqrs.CommandBus
 	ticketRepository   database.TicketRepository
 	showsRepository    database.ShowsRepository
 	bookingsRepository database.BookingsRepository
 }
 
-func NewHandler(eventBus *cqrs.EventBus, ticketRepository database.TicketRepository, showsRepository database.ShowsRepository, bookingsRepository database.BookingsRepository) Handler {
+func NewHandler(eventBus *cqrs.EventBus, commandBus *cqrs.CommandBus, ticketRepository database.TicketRepository, showsRepository database.ShowsRepository, bookingsRepository database.BookingsRepository) Handler {
 	if eventBus == nil {
 		panic("eventBus is required")
+	}
+	if commandBus == nil {
+		panic("commandBus is required")
 	}
 
 	return Handler{
 		eventBus:           eventBus,
+		commandBus:         commandBus,
 		ticketRepository:   ticketRepository,
 		showsRepository:    showsRepository,
 		bookingsRepository: bookingsRepository,
@@ -161,4 +167,22 @@ func (h Handler) BookTickets(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, response)
+}
+
+func (h Handler) PutTicketRefund(c echo.Context) error {
+	ticketID := c.Param("ticket_id")
+
+	if ticketID == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "ticket_id is required")
+	}
+
+	idempotencyKey := c.Request().Header.Get("Idempotency-Key")
+
+	command := commands.NewRefundTicketWithIdempotencyKey(ticketID, idempotencyKey)
+
+	if err := h.commandBus.Send(c.Request().Context(), command); err != nil {
+		return err
+	}
+
+	return c.NoContent(http.StatusAccepted)
 }

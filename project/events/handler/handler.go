@@ -15,6 +15,7 @@ type SpreadsheetsAPI interface {
 
 type ReceiptsService interface {
 	IssueReceipt(ctx context.Context, payload events.TicketBookingConfirmed) error
+	VoidReceipt(ctx context.Context, ticketID string, reason string, idempotencyKey string) error
 }
 
 type TicketRepository interface {

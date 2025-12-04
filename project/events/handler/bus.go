@@ -26,3 +26,23 @@ func NewEventBus(pub message.Publisher) *cqrs.EventBus {
 
 	return bus
 }
+
+func NewCommandBus(pub message.Publisher) *cqrs.CommandBus {
+	bus, err := cqrs.NewCommandBusWithConfig(
+		pub,
+		cqrs.CommandBusConfig{
+			GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
+				return params.CommandName, nil
+			},
+			Marshaler: cqrs.JSONMarshaler{
+				GenerateName: cqrs.StructName,
+			},
+		},
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return bus
+}

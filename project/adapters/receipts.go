@@ -51,6 +51,27 @@ func (c ReceiptsServiceClient) IssueReceipt(ctx context.Context, request events.
 	}
 }
 
+func (c ReceiptsServiceClient) VoidReceipt(ctx context.Context, ticketID string, reason string, idempotencyKey string) error {
+	resp, err := c.clients.Receipts.PutVoidReceiptWithResponse(ctx, receipts.VoidReceiptRequest{
+		TicketId:     ticketID,
+		Reason:        "customer requested refund",
+		IdempotentId: &idempotencyKey,
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to void receipt: %w", err)
+	}
+
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		return nil
+	case http.StatusNoContent:
+		return nil
+	default:
+		return fmt.Errorf("unexpected status code for PUT void-receipt: %d", resp.StatusCode())
+	}
+}
+
 type ReceiptsServiceClientStub struct {
 	IssuedReceipts []events.TicketBookingConfirmed
 	lock sync.Mutex
@@ -62,5 +83,9 @@ func (r *ReceiptsServiceClientStub) IssueReceipt(ctx context.Context, request ev
 
 	r.IssuedReceipts =  append(r.IssuedReceipts, request)
 
+	return nil
+}
+
+func (r *ReceiptsServiceClientStub) VoidReceipt(ctx context.Context, ticketID string, reason string, idempotencyKey string) error {
 	return nil
 }
