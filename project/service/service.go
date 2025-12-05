@@ -33,6 +33,7 @@ type Service struct {
 func New(
 	spreadsheetsAPI handler.SpreadsheetsAPI,
 	receiptsService handler.ReceiptsService,
+	paymentsService handler.PaymentsService,
 	filesAPI handler.FilesAPI,
 	deadNationAPI handler.DeadNationAPI,
 	db *sqlx.DB,
@@ -81,7 +82,10 @@ func New(
 		redisClient,
 		logger,
 		receiptsService,
+		paymentsService,
+		eventBus,
 	)
+	
 	if err != nil {
 		return nil, err
 	}

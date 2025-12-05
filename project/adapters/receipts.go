@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
+	"tickets/entities"
 	"tickets/entities/events"
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/clients"
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/clients/receipts"
@@ -24,7 +26,7 @@ func NewReceiptsServiceClient(clients *clients.Clients) *ReceiptsServiceClient {
 	return &ReceiptsServiceClient{clients: clients}
 }
 
-func (c ReceiptsServiceClient) IssueReceipt(ctx context.Context, request events.TicketBookingConfirmed) error {
+func (c ReceiptsServiceClient) IssueReceipt(ctx context.Context, request events.TicketBookingConfirmed) (entities.IssueReceiptResponse, error) {
 	idempotencyKey := request.Header.IdempotencyKey
 	resp, err := c.clients.Receipts.PutReceiptsWithResponse(ctx, receipts.CreateReceipt{
 		IdempotencyKey: &idempotencyKey,
@@ -36,18 +38,22 @@ func (c ReceiptsServiceClient) IssueReceipt(ctx context.Context, request events.
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to post receipt: %w", err)
+		return entities.IssueReceiptResponse{}, fmt.Errorf("failed to post receipt: %w", err)
 	}
 
 	switch resp.StatusCode() {
 	case http.StatusOK:
-		// receipt already exists
-		return nil
+		return entities.IssueReceiptResponse{
+			ReceiptNumber: resp.JSON200.Number,
+			IssuedAt:      resp.JSON200.IssuedAt,
+		}, nil
 	case http.StatusCreated:
-		// receipt was created
-		return nil
+		return entities.IssueReceiptResponse{
+			ReceiptNumber: resp.JSON201.Number,
+			IssuedAt:      resp.JSON201.IssuedAt,
+		}, nil
 	default:
-		return fmt.Errorf("unexpected status code for POST receipts-api/receipts: %d", resp.StatusCode())
+		return entities.IssueReceiptResponse{}, fmt.Errorf("unexpected status code for POST receipts-api/receipts: %d", resp.StatusCode())
 	}
 }
 
@@ -77,13 +83,16 @@ type ReceiptsServiceClientStub struct {
 	lock sync.Mutex
 }
 
-func (r *ReceiptsServiceClientStub) IssueReceipt(ctx context.Context, request events.TicketBookingConfirmed) error {
+func (r *ReceiptsServiceClientStub) IssueReceipt(ctx context.Context, request events.TicketBookingConfirmed) (entities.IssueReceiptResponse, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
 	r.IssuedReceipts =  append(r.IssuedReceipts, request)
 
-	return nil
+	return entities.IssueReceiptResponse{
+		ReceiptNumber: "RECEIPT-" + request.TicketID,
+		IssuedAt:      time.Now(),
+	}, nil
 }
 
 func (r *ReceiptsServiceClientStub) VoidReceipt(ctx context.Context, ticketID string, reason string, idempotencyKey string) error {

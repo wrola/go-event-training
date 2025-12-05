@@ -27,6 +27,7 @@ func TestComponent(t *testing.T) {
 
 	spreadsheetsAPI := &adapters.SpreadsheetsAPIClientStub{}
 	receiptsService := &adapters.ReceiptsServiceClientStub{}
+	paymentsService := &adapters.PaymentsServiceClientStub{}
 	fileAPI := &adapters.FilesAPIClientStub{}
 	deadNationAPI := &adapters.DeadNationAPIStub{}
 	db := database.NewDatabaseConnection()
@@ -35,6 +36,7 @@ func TestComponent(t *testing.T) {
 		svc, err := service.New(
 			spreadsheetsAPI,
 			receiptsService,
+			paymentsService,
 			fileAPI,
 			deadNationAPI,
 			db,

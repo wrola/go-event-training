@@ -6,11 +6,12 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"tickets/database"
-	"tickets/entities/models"
-	"tickets/entities/events"
 	"tickets/entities/commands"
+	"tickets/entities/events"
+	"tickets/entities/models"
+
+	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 )
 
 type Handler struct {
@@ -43,6 +44,7 @@ type TicketStatusRequest struct {
 	CustomerEmail string `json:"customer_email"`
 	Price models.Money `json:"price"`
 	Status models.TicketBookingStatus `json:"status"`
+	BookingID string `json:"booking_id"`
 }
 
 type ticketsConfirmationRequest struct {
@@ -62,6 +64,7 @@ type BookTicketsRequest struct {
 	ShowID          string `json:"show_id"`
 	NumberOfTickets int    `json:"number_of_tickets"`
 	CustomerEmail   string `json:"customer_email"`
+	BookingID		string  `json:"booking_id"`
 }
 
 type BookTicketsResponse struct {
@@ -88,6 +91,7 @@ func (h Handler) PostTicketsConfirmation(c echo.Context) error {
   				ticket.CustomerEmail,
   				ticket.Price,
   				ticketIdempotencyKey,
+				ticket.BookingID,
   			)
   			h.eventBus.Publish(c.Request().Context(), event)
   		case models.TicketStatusCanceled:
@@ -122,11 +126,6 @@ func (h Handler) CreateShow(c echo.Context) error {
 		return err
 	}
 
-	// idempotencyKey := c.Request().Header.Get("Idempotency-Key")
-	// if idempotencyKey == "" {
-	// 	return echo.NewHTTPError(http.StatusBadRequest, "Idempotency-Key header is required")
-	// }
-
 	show := models.NewShow(
 		request.ShowID,
 		request.DeadNationID,
@@ -151,7 +150,7 @@ func (h Handler) BookTickets(c echo.Context) error {
 	}
 
 	booking := models.NewBooking(
-		"", // booking_id will be auto-generated
+		request.BookingID,
 		request.ShowID,
 		request.NumberOfTickets,
 		request.CustomerEmail,

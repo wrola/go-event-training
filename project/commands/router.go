@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"context"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
@@ -10,18 +9,17 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"tickets/commands/handler"
-	"tickets/entities/events"
 )
 
-type ReceiptsService interface {
-	IssueReceipt(ctx context.Context, payload events.TicketBookingConfirmed) error
-	VoidReceipt(ctx context.Context, ticketID string, reason string, idempotencyKey string) error
-}
+
+
 
 func NewCommandProcessor(
 	redisClient *redis.Client,
 	logger watermill.LoggerAdapter,
-	receiptsService ReceiptsService,
+	receiptsService handler.ReceiptsService,
+	paymentsService handler.PaymentsService,
+	eventBus *cqrs.EventBus,
 ) (*message.Router, error) {
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
@@ -29,13 +27,13 @@ func NewCommandProcessor(
 		return nil, err
 	}
 
-	cmdHandler := handler.NewCommandHandler(receiptsService)
+	cmdHandler := handler.NewCommandHandler(receiptsService, paymentsService, eventBus)
 
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
 		router,
 		cqrs.CommandProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
-				return params.CommandName, nil
+				return "commands." + params.CommandName, nil
 			},
 			SubscriberConstructor: NewSubscriberConstructor(redisClient, logger),
 			Marshaler: cqrs.JSONMarshaler{
@@ -63,12 +61,11 @@ func NewCommandProcessor(
 
 func NewSubscriberConstructor(redisClient *redis.Client, logger watermill.LoggerAdapter) cqrs.CommandProcessorSubscriberConstructorFn {
 	return func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-		consumerGroup := params.HandlerName + "-workers"
 
 		return redisstream.NewSubscriber(
 			redisstream.SubscriberConfig{
 				Client:        redisClient,
-				ConsumerGroup: consumerGroup,
+				ConsumerGroup: "commands." + params.HandlerName,
 			}, logger)
 	}
 }

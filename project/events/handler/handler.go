@@ -5,8 +5,10 @@ import (
 
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/clients/dead_nation"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
-	"tickets/entities/models"
+	"tickets/entities"
+	"tickets/entities/commands"
 	"tickets/entities/events"
+	"tickets/entities/models"
 )
 
 type SpreadsheetsAPI interface {
@@ -14,7 +16,7 @@ type SpreadsheetsAPI interface {
 }
 
 type ReceiptsService interface {
-	IssueReceipt(ctx context.Context, payload events.TicketBookingConfirmed) error
+	IssueReceipt(ctx context.Context, payload events.TicketBookingConfirmed) (entities.IssueReceiptResponse, error)
 	VoidReceipt(ctx context.Context, ticketID string, reason string, idempotencyKey string) error
 }
 
@@ -37,6 +39,10 @@ type DeadNationAPI interface {
 		body dead_nation.PostTicketBookingJSONRequestBody,
 		reqEditors ...dead_nation.RequestEditorFn,
 	) (*dead_nation.PostTicketBookingResponse, error)
+}
+
+type PaymentsService interface {
+	RefundPayment(ctx context.Context, refundPayment commands.PaymentRefund) error
 }
 
 type MessageHandler struct {

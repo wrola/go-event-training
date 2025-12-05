@@ -46,7 +46,7 @@ func NewEventProcessor(
 		router,
 		cqrs.EventProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
-				return params.EventName, nil
+				return "events." + params.EventName, nil
 			},
 			SubscriberConstructor: NewSubscriberConstructor(redisClient, logger),
 			Marshaler: cqrs.JSONMarshaler{

@@ -11,7 +11,7 @@ func NewEventBus(pub message.Publisher) *cqrs.EventBus {
 		pub,
 		cqrs.EventBusConfig{
 			GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
-				return params.EventName, nil
+				return "events." + params.EventName, nil
 			},
 			Marshaler: cqrs.JSONMarshaler{
 					GenerateName: cqrs.StructName,
@@ -32,7 +32,7 @@ func NewCommandBus(pub message.Publisher) *cqrs.CommandBus {
 		pub,
 		cqrs.CommandBusConfig{
 			GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
-				return params.CommandName, nil
+				return "commands." + params.CommandName, nil
 			},
 			Marshaler: cqrs.JSONMarshaler{
 				GenerateName: cqrs.StructName,
