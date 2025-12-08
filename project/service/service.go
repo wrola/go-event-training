@@ -39,12 +39,13 @@ func New(
 	db *sqlx.DB,
 ) (*Service, error) {
 
+	//TODO: refactor into container DI 
 	redisClient := ticketsEvents.NewRedisClient()
 	logger := ticketsEvents.NewLogger()
 	ticketRepository := database.NewTicketRepository(db)
 	showsRepository := database.NewShowsRepository(db)
 	bookingsRepository := database.NewBookingsRepository(db, logger)
-	opsBookingRepo := database.NewOpsBookingReadModel(db)
+	opsBookingRepository := database.NewOpsBookingReadModelRespository(db)
 
 	publisher, err := ticketsEvents.NewMessagePublisher(redisClient, logger)
 	if err != nil {
@@ -59,7 +60,7 @@ func New(
 	eventBus := handler.NewEventBus(publisher)
 	commandBus := handler.NewCommandBus(publisher)
 
-	echoRouter, err := ticketsHttp.NewHttpRouter(eventBus, commandBus, ticketRepository, showsRepository, bookingsRepository)
+	echoRouter, err := ticketsHttp.NewHttpRouter(eventBus, commandBus, ticketRepository, showsRepository, bookingsRepository, opsBookingRepository )
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +75,7 @@ func New(
 		logger,
 		ticketRepository,
 		eventBus,
-		opsBookingRepo,
+		opsBookingRepository,
 	)
 	if err != nil {
 		return nil, err

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"tickets/entities/commands"
 	"tickets/entities/events"
 	"tickets/entities/models"
+	"github.com/google/uuid"
 
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 )
@@ -20,9 +22,10 @@ type Handler struct {
 	ticketRepository   database.TicketRepository
 	showsRepository    database.ShowsRepository
 	bookingsRepository database.BookingsRepository
+	opsBookingRepository database.OpsBookingReadModelRepository
 }
 
-func NewHandler(eventBus *cqrs.EventBus, commandBus *cqrs.CommandBus, ticketRepository database.TicketRepository, showsRepository database.ShowsRepository, bookingsRepository database.BookingsRepository) Handler {
+func NewHandler(eventBus *cqrs.EventBus, commandBus *cqrs.CommandBus, ticketRepository database.TicketRepository, showsRepository database.ShowsRepository, bookingsRepository database.BookingsRepository, opsBookingRepository database.OpsBookingReadModelRepository) Handler {
 	if eventBus == nil {
 		panic("eventBus is required")
 	}
@@ -31,11 +34,12 @@ func NewHandler(eventBus *cqrs.EventBus, commandBus *cqrs.CommandBus, ticketRepo
 	}
 
 	return Handler{
-		eventBus:           eventBus,
-		commandBus:         commandBus,
-		ticketRepository:   ticketRepository,
-		showsRepository:    showsRepository,
-		bookingsRepository: bookingsRepository,
+		eventBus:             eventBus,
+		commandBus:           commandBus,
+		ticketRepository:     ticketRepository,
+		showsRepository:      showsRepository,
+		bookingsRepository:   bookingsRepository,
+		opsBookingRepository: opsBookingRepository,
 	}
 }
 
@@ -184,4 +188,50 @@ func (h Handler) PutTicketRefund(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusAccepted)
+}
+
+func (h Handler) GetOpsBookings(c echo.Context) error {
+	// Parse optional query parameter
+	receiptIssueDateStr := c.QueryParam("receipt_issue_date")
+
+	var receiptIssueDate *time.Time
+	if receiptIssueDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", receiptIssueDateStr)
+		if err != nil {
+			return echo.NewHTTPError(
+				http.StatusBadRequest,
+				fmt.Sprintf("invalid date format for receipt_issue_date: expected YYYY-MM-DD, got %q", receiptIssueDateStr),
+			)
+		}
+		receiptIssueDate = &parsed
+	}
+
+	opsBookings, err := h.opsBookingRepository.GetAllReadModels(
+		c.Request().Context(),
+		receiptIssueDate,
+	)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, opsBookings)
+}
+
+func (h Handler) GetOpsBookingByID(c echo.Context) error {
+	bookingID := c.Param("booking_id")
+
+	if bookingID == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "booking_id is required")
+	} 
+
+	if err := uuid.Validate(bookingID); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "booking_id is not a valid UUID")
+	}
+
+	opsBooking, err := h.opsBookingRepository.FindReadModelByBookingID(c.Request().Context(), bookingID)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, opsBooking)
 }

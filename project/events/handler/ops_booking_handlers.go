@@ -17,7 +17,7 @@ func (h *MessageHandler) OnBookingMade(ctx context.Context, event *events.Bookin
 		return fmt.Errorf("invalid booking_id: %w", err)
 	}
 
-	return h.opsBookingRepo.CreateBooking(ctx, bookingID, time.Now())
+	return h.opsBookingRepo.CreateBooking(ctx, bookingID.String(), time.Now())
 }
 
 func (h *MessageHandler) OnTicketBookingConfirmed(ctx context.Context, event *events.TicketBookingConfirmed) error {
@@ -26,7 +26,7 @@ func (h *MessageHandler) OnTicketBookingConfirmed(ctx context.Context, event *ev
 		return fmt.Errorf("invalid booking_id: %w", err)
 	}
 
-	return h.opsBookingRepo.UpdateReadModelByBookingID(ctx, bookingID, func(opsBooking *models.OpsBooking) error {
+	return h.opsBookingRepo.UpdateReadModelByBookingID(ctx, bookingID.String(), func(opsBooking *models.OpsBooking) error {
 		if opsBooking.Tickets == nil {
 			opsBooking.Tickets = make(map[string]models.OpsTicket)
 		}

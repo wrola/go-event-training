@@ -6,7 +6,6 @@ import (
 
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/clients/dead_nation"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
-	"github.com/google/uuid"
 	"tickets/entities"
 	"tickets/entities/commands"
 	"tickets/entities/events"
@@ -48,9 +47,12 @@ type PaymentsService interface {
 }
 
 type OpsBookingRepository interface {
-	CreateBooking(ctx context.Context, bookingID uuid.UUID, bookedAt time.Time) error
-	UpdateReadModelByBookingID(ctx context.Context, bookingID uuid.UUID, updateFn func(*models.OpsBooking) error) error
+	CreateBooking(ctx context.Context, bookingID string, bookedAt time.Time) error
+	UpdateReadModelByBookingID(ctx context.Context, bookingID string, updateFn func(*models.OpsBooking) error) error
 	UpdateReadModelByTicketID(ctx context.Context, ticketID string, updateFn func(*models.OpsBooking) error) error
+	FindReadModelByBookingID(ctx context.Context, bookingID string) (models.OpsBooking, error)
+	FindReadModelByTicketID(ctx context.Context, ticketID string) (models.OpsBooking, error)
+
 }
 
 type MessageHandler struct {
