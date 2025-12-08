@@ -11,9 +11,11 @@ import (
 
 	"tickets/adapters"
 	"tickets/database"
-	"tickets/entities"
+	"tickets/entities/events"
+	"tickets/entities/models"
 	ticketsHttp "tickets/http"
 	"tickets/service"
+
 	"github.com/lithammer/shortuuid/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,11 +60,11 @@ func TestComponent(t *testing.T) {
 		ticket := ticketsHttp.TicketStatusRequest{
 			TicketID:      "test-ticket-confirmed-123",
 			CustomerEmail: "confirmed@example.com",
-			Price: entities.Money{
+			Price:models.Money{
 				Amount:   "100.00",
 				Currency: "USD",
 			},
-			Status: entities.TicketStatusConfirmed,
+			Status: models.TicketStatusConfirmed,
 		}
 
 		sendTicketsStatus(t, ticket)
@@ -76,11 +78,11 @@ func TestComponent(t *testing.T) {
 		ticket := ticketsHttp.TicketStatusRequest{
 			TicketID:      "test-ticket-canceled-456",
 			CustomerEmail: "canceled@example.com",
-			Price: entities.Money{
+			Price:models.Money{
 				Amount:   "50.00",
 				Currency: "EUR",
 			},
-			Status: entities.TicketStatusCanceled,
+			Status: models.TicketStatusCanceled,
 		}
 
 		sendTicketsStatus(t, ticket)
@@ -92,21 +94,21 @@ func TestComponent(t *testing.T) {
 		ticket1 := ticketsHttp.TicketStatusRequest{
 			TicketID:      "get-all-test-1",
 			CustomerEmail: "test1@example.com",
-			Price: entities.Money{
+			Price: models.Money{
 				Amount:   "25.50",
 				Currency: "USD",
 			},
-			Status: entities.TicketStatusConfirmed,
+			Status: models.TicketStatusConfirmed,
 		}
 
 		ticket2 := ticketsHttp.TicketStatusRequest{
 			TicketID:      "get-all-test-2",
 			CustomerEmail: "test2@example.com",
-			Price: entities.Money{
+			Price: models.Money{
 				Amount:   "35.75",
 				Currency: "EUR",
 			},
-			Status: entities.TicketStatusConfirmed,
+			Status: models.TicketStatusConfirmed,
 		}
 
 		sendTicketsStatus(t, ticket1)
@@ -120,7 +122,7 @@ func TestComponent(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var tickets []entities.Ticket
+		var tickets []models.Ticket
 		err = json.NewDecoder(resp.Body).Decode(&tickets)
 		require.NoError(t, err)
 
@@ -327,7 +329,7 @@ func assertReceiptForTicketIssued(t *testing.T, receiptsService *adapters.Receip
 		100*time.Millisecond,
 	)
 
-	var receipt entities.TicketBookingConfirmed
+	var receipt events.TicketBookingConfirmed
 	var ok bool
 	for _, issuedReceipt := range receiptsService.IssuedReceipts {
 		if issuedReceipt.TicketID != ticket.TicketID {

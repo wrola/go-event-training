@@ -23,6 +23,7 @@ func NewEventProcessor(
 	logger watermill.LoggerAdapter,
 	ticketRepository database.TicketRepository,
 	eventBus *cqrs.EventBus,
+	opsBookingRepo database.OpsBookingReadModel,
 ) (*message.Router, error) {
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
@@ -40,6 +41,7 @@ func NewEventProcessor(
 		showsRepository,
 		deadNationAPI,
 		eventBus,
+		opsBookingRepo,
 	)
 
 	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
@@ -87,6 +89,26 @@ func NewEventProcessor(
 		cqrs.NewEventHandler(
 			"BookingMade",
 			msgHandler.BookingMadeUpdate,
+		),
+		cqrs.NewEventHandler(
+			"OnBookingMade",
+			msgHandler.OnBookingMade,
+		),
+		cqrs.NewEventHandler(
+			"OnTicketBookingConfirmed",
+			msgHandler.OnTicketBookingConfirmed,
+		),
+		cqrs.NewEventHandler(
+			"OnTicketReceiptIssued",
+			msgHandler.OnTicketReceiptIssued,
+		),
+		cqrs.NewEventHandler(
+			"OnTicketPrinted",
+			msgHandler.OnTicketPrinted,
+		),
+		cqrs.NewEventHandler(
+			"OnTicketRefunded",
+			msgHandler.OnTicketRefunded,
 		),
 	)
 

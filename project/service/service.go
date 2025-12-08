@@ -44,6 +44,7 @@ func New(
 	ticketRepository := database.NewTicketRepository(db)
 	showsRepository := database.NewShowsRepository(db)
 	bookingsRepository := database.NewBookingsRepository(db, logger)
+	opsBookingRepo := database.NewOpsBookingReadModel(db)
 
 	publisher, err := ticketsEvents.NewMessagePublisher(redisClient, logger)
 	if err != nil {
@@ -73,6 +74,7 @@ func New(
 		logger,
 		ticketRepository,
 		eventBus,
+		opsBookingRepo,
 	)
 	if err != nil {
 		return nil, err

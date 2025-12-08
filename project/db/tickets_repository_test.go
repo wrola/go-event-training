@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"tickets/database"
-	"tickets/entities"
+	"tickets/entities/models"
 )
 
 var db *sqlx.DB
@@ -32,18 +32,18 @@ func getDb() *sqlx.DB {
 	return db
 }
 
-func createTestTicket(ticketID string) entities.Ticket {
-	return entities.Ticket{
+func createTestTicket(ticketID string) models.Ticket {
+	return models.Ticket{
 		TicketID:      ticketID,
 		CustomerEmail: "test-" + ticketID + "@example.com",
-		Price: entities.Money{
+		Price: models.Money{
 			Amount:   "99.99",
 			Currency: "USD",
 		},
 	}
 }
 
-func findTicketByID(tickets []entities.Ticket, ticketID string) (*entities.Ticket, bool) {
+func findTicketByID(tickets []models.Ticket, ticketID string) (*models.Ticket, bool) {
 	for _, ticket := range tickets {
 		if ticket.TicketID == ticketID {
 			return &ticket, true
@@ -53,7 +53,7 @@ func findTicketByID(tickets []entities.Ticket, ticketID string) (*entities.Ticke
 }
 
 
-func countTicketsWithID(tickets []entities.Ticket, ticketID string) int {
+func countTicketsWithID(tickets []models.Ticket, ticketID string) int {
 	count := 0
 	for _, ticket := range tickets {
 		if ticket.TicketID == ticketID {

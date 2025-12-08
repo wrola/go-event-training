@@ -2,9 +2,11 @@ package handler
 
 import (
 	"context"
+	"time"
 
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/clients/dead_nation"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
+	"github.com/google/uuid"
 	"tickets/entities"
 	"tickets/entities/commands"
 	"tickets/entities/events"
@@ -45,6 +47,12 @@ type PaymentsService interface {
 	RefundPayment(ctx context.Context, refundPayment commands.PaymentRefund) error
 }
 
+type OpsBookingRepository interface {
+	CreateBooking(ctx context.Context, bookingID uuid.UUID, bookedAt time.Time) error
+	UpdateReadModelByBookingID(ctx context.Context, bookingID uuid.UUID, updateFn func(*models.OpsBooking) error) error
+	UpdateReadModelByTicketID(ctx context.Context, ticketID string, updateFn func(*models.OpsBooking) error) error
+}
+
 type MessageHandler struct {
 	spreadsheetsAPI  SpreadsheetsAPI
 	receiptsService  ReceiptsService
@@ -53,6 +61,7 @@ type MessageHandler struct {
 	showsRepository  ShowsRepository
 	deadNationAPI    DeadNationAPI
 	eventBus         *cqrs.EventBus
+	opsBookingRepo   OpsBookingRepository
 }
 
 func NewMessageHandler(
@@ -63,6 +72,7 @@ func NewMessageHandler(
 	showsRepository ShowsRepository,
 	deadNationAPI DeadNationAPI,
 	eventBus *cqrs.EventBus,
+	opsBookingRepo OpsBookingRepository,
 ) *MessageHandler {
 	if spreadsheetsAPI == nil {
 		panic("missing spreadsheetsAPI")
@@ -94,6 +104,7 @@ func NewMessageHandler(
 		showsRepository:  showsRepository,
 		deadNationAPI:    deadNationAPI,
 		eventBus:         eventBus,
+		opsBookingRepo:   opsBookingRepo,
 	}
 }
 
