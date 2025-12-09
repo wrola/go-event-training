@@ -57,6 +57,10 @@ type OpsBookingRepository interface {
 
 }
 
+type EventRepository interface {
+	StoreEvent(ctx context.Context, eventID string, publishedAt time.Time, eventName string, eventPayload []byte) error
+}
+
 type MessageHandler struct {
 	spreadsheetsAPI  SpreadsheetsAPI
 	receiptsService  ReceiptsService
@@ -66,6 +70,7 @@ type MessageHandler struct {
 	deadNationAPI    DeadNationAPI
 	eventBus         *cqrs.EventBus
 	opsBookingRepo   OpsBookingRepository
+	eventRepo        EventRepository
 }
 
 func NewMessageHandler(
@@ -77,6 +82,7 @@ func NewMessageHandler(
 	deadNationAPI DeadNationAPI,
 	eventBus *cqrs.EventBus,
 	opsBookingRepo OpsBookingRepository,
+	eventRepo EventRepository,
 ) *MessageHandler {
 	if spreadsheetsAPI == nil {
 		panic("missing spreadsheetsAPI")
@@ -99,6 +105,9 @@ func NewMessageHandler(
 	if eventBus == nil {
 		panic("missing eventBus")
 	}
+	if eventRepo == nil {
+		panic("missing eventRepo")
+	}
 
 	return &MessageHandler{
 		spreadsheetsAPI:  spreadsheetsAPI,
@@ -109,6 +118,7 @@ func NewMessageHandler(
 		deadNationAPI:    deadNationAPI,
 		eventBus:         eventBus,
 		opsBookingRepo:   opsBookingRepo,
+		eventRepo:        eventRepo,
 	}
 }
 

@@ -26,6 +26,7 @@ func NewEventProcessor(
 	ticketRepository database.TicketRepository,
 	eventBus *cqrs.EventBus,
 	opsBookingRepository database.OpsBookingReadModelRepository,
+	eventRepository database.EventRepository,
 ) (*message.Router, error) {
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
@@ -44,6 +45,7 @@ func NewEventProcessor(
 		deadNationAPI,
 		eventBus,
 		opsBookingRepository,
+		eventRepository,
 	)
 
 	redisSubscriber := NewSubscriberConstructor(redisClient, logger)
@@ -152,6 +154,23 @@ func NewEventProcessor(
 
 			return redisPublisher.Publish("events."+eventName, msg)
 		},
+	)
+
+	// Event Store Consumer - stores all events
+	eventStoreSubscriber, err := redisstream.NewSubscriber(
+		redisstream.SubscriberConfig{
+			Client:        redisClient,
+			ConsumerGroup: "event_store",
+		}, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	router.AddConsumerHandler(
+		"event_store_handler",
+		"events",
+		eventStoreSubscriber,
+		msgHandler.SaveEventInEventStore,
 	)
 
 	return router, nil

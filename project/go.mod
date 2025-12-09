@@ -6,6 +6,7 @@ require (
 	github.com/ThreeDotsLabs/go-event-driven/v2 v2.0.0
 	github.com/ThreeDotsLabs/watermill v1.5.1
 	github.com/ThreeDotsLabs/watermill-redisstream v1.4.4
+	github.com/ThreeDotsLabs/watermill-sql/v3 v3.1.0
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/labstack/echo/v4 v4.13.4
@@ -13,6 +14,7 @@ require (
 	github.com/lithammer/shortuuid/v3 v3.0.7
 	github.com/redis/go-redis/v9 v9.16.0
 	github.com/stretchr/testify v1.11.0
+	golang.org/x/net v0.40.0
 	golang.org/x/sync v0.14.0
 )
 
@@ -23,7 +25,6 @@ require (
 	github.com/Joker/jade v1.1.3 // indirect
 	github.com/Rican7/retry v0.3.1 // indirect
 	github.com/Shopify/goreferrer v0.0.0-20250513162709-b78e2829e40b // indirect
-	github.com/ThreeDotsLabs/watermill-sql/v3 v3.1.0 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
@@ -90,7 +91,6 @@ require (
 	golang.org/x/arch v0.17.0 // indirect
 	golang.org/x/crypto v0.38.0 // indirect
 	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6 // indirect
-	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
