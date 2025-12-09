@@ -13,4 +13,5 @@ type Ticket struct {
 	Price         Money  `json:"price" db:"price"`
 	ConfirmedAt   string `json:"-" db:"confirmed_at"`
 	RefundedAt    string `json:"-" db:"refunded_at"`
+	DeletedAt     string `json:"-" db:"deleted_at"`
 }

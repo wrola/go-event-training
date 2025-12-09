@@ -1,16 +1,18 @@
 package events
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-redisstream/pkg/redisstream"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/redis/go-redis/v9"
+	"tickets/database"
 	"tickets/events/handler"
 	ticketsMiddleware "tickets/events/middleware"
-	"tickets/database"
 )
 
 func NewEventProcessor(
@@ -44,13 +46,19 @@ func NewEventProcessor(
 		opsBookingRepository,
 	)
 
+	redisSubscriber := NewSubscriberConstructor(redisClient, logger)
+	redisPublisher, err := NewMessagePublisher(redisClient, logger)
+	if err != nil {
+		return nil, err
+	}
+
 	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
 		router,
 		cqrs.EventProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "events." + params.EventName, nil
 			},
-			SubscriberConstructor: NewSubscriberConstructor(redisClient, logger),
+			SubscriberConstructor: redisSubscriber,
 			Marshaler: cqrs.JSONMarshaler{
 				GenerateName: cqrs.StructName,
 			},
@@ -115,10 +123,36 @@ func NewEventProcessor(
 			msgHandler.UpdateRefundedTicket,
 		),
 	)
-
 	if err != nil {
 		return nil, err
 	}
+
+	eventProcessorMarshaler := cqrs.JSONMarshaler{
+		GenerateName: cqrs.StructName,
+	}
+
+	splitterSubscriber, err := redisstream.NewSubscriber(
+		redisstream.SubscriberConfig{
+			Client:        redisClient,
+			ConsumerGroup: "events_splitter",
+		}, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	router.AddConsumerHandler(
+		"events_splitter",
+		"events",
+		splitterSubscriber,
+		func(msg *message.Message) error {
+			eventName := eventProcessorMarshaler.NameFromMessage(msg)
+			if eventName == "" {
+				return fmt.Errorf("cannot get event name from message")
+			}
+
+			return redisPublisher.Publish("events."+eventName, msg)
+		},
+	)
 
 	return router, nil
 }

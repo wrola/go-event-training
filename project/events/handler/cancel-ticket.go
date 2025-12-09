@@ -13,6 +13,9 @@ func (h MessageHandler) CancelTicket(ctx context.Context, payload *events.Ticket
 	if err != nil {
 		return err
 	}
-
+	err = h.ticketRepository.SoftDelete(ctx, payload.TicketID)
+	if err != nil {
+		return err
+	}
 	return nil
 }	

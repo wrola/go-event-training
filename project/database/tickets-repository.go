@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/jmoiron/sqlx"
 	"tickets/entities/models"
 )
@@ -19,11 +20,12 @@ func NewTicketRepository(db *sqlx.DB) TicketRepository {
 func (t TicketRepository) Add (ctx context.Context, ticket models.Ticket) (error) {
 	confirmedAt := sql.NullString{String: ticket.ConfirmedAt, Valid: ticket.ConfirmedAt != ""}
 	refundedAt := sql.NullString{String: ticket.RefundedAt, Valid: ticket.RefundedAt != ""}
+	deletedAt := sql.NullString{String: ticket.DeletedAt, Valid: ticket.DeletedAt != ""}
 
 	_, err := t.db.ExecContext(
 		ctx,
-		`INSERT INTO tickets (ticket_id, price_amount, price_currency, customer_email, confirmed_at, refunded_at)
-		 VALUES ($1, $2, $3, $4, $5::TIMESTAMPTZ, $6::TIMESTAMPTZ)
+		`INSERT INTO tickets (ticket_id, price_amount, price_currency, customer_email, confirmed_at, refunded_at, deleted_at)
+		 VALUES ($1, $2, $3, $4, $5::TIMESTAMPTZ, $6::TIMESTAMPTZ, $7::TIMESTAMPTZ)
 		 ON CONFLICT DO NOTHING`,
 		ticket.TicketID,
 		ticket.Price.Amount,
@@ -31,6 +33,7 @@ func (t TicketRepository) Add (ctx context.Context, ticket models.Ticket) (error
 		ticket.CustomerEmail,
 		confirmedAt,
 		refundedAt,
+		deletedAt,
 	)
 	return err
 }
@@ -77,9 +80,11 @@ func (t TicketRepository) GetAll (ctx context.Context) ([]models.Ticket, error) 
 				price_currency as "price.currency",
 				customer_email,
 				COALESCE(confirmed_at::TEXT, '') as confirmed_at,
-				COALESCE(refunded_at::TEXT, '') as refunded_at
+				COALESCE(refunded_at::TEXT, '') as refunded_at,
+				COALESCE(deleted_at::TEXT, '') as deleted_at
 			FROM
 				tickets
+			WHERE deleted_at IS NULL
 		`,
 	)
 
@@ -89,3 +94,27 @@ func (t TicketRepository) GetAll (ctx context.Context) ([]models.Ticket, error) 
 
 	return returnTickets, nil
 }
+
+func (t TicketRepository) SoftDelete(ctx context.Context, ticketID string) error {
+	res, err := t.db.ExecContext(
+		ctx,
+		`UPDATE tickets
+		 SET deleted_at = NOW()
+		 WHERE ticket_id = $1`,
+		ticketID,
+	)
+	if err != nil {
+		return fmt.Errorf("could not soft delete ticket: %w", err)
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("could not get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("ticket with id %s not found", ticketID)
+	}
+
+	return nil
+}	

@@ -1,16 +1,13 @@
 package handler
 
-import ( 
+import (
 	"context"
 	"tickets/entities/events"
-	"tickets/entities/models"
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/log"
 )
 
 func (h MessageHandler) RemoveCanceledTicket (ctx context.Context, event *events.TicketBookingCanceled ) error {
-	log.FromContext(ctx).Info("Removal canceled Ticket from Store")
+	log.FromContext(ctx).Info("Soft deleting canceled ticket from store")
 
-	return h.ticketRepository.Remove(ctx, models.Ticket{
-		TicketID:      event.TicketID,
-	})
+	return h.ticketRepository.SoftDelete(ctx, event.TicketID)
 }

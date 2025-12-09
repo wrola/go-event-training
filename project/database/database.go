@@ -29,7 +29,8 @@ var schema = `CREATE TABLE IF NOT EXISTS tickets (
 	price_currency CHAR(3) NOT NULL,
 	customer_email VARCHAR(255) NOT NULL,
 	confirmed_at TIMESTAMPTZ,
-	refunded_at TIMESTAMPTZ
+	refunded_at TIMESTAMPTZ,
+	deleted_at TIMESTAMPTZ
 );
 	CREATE TABLE IF NOT EXISTS shows (
 	  show_id UUID PRIMARY KEY,
