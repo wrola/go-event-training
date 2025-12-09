@@ -14,12 +14,13 @@ type OpsBooking struct {
 }
 
 type OpsTicket struct {
-	PriceAmount     string    `json:"price_amount"`
-	PriceCurrency   string    `json:"price_currency"`
-	CustomerEmail   string    `json:"customer_email"`
-	Status          string    `json:"status"`
-	PrintedAt       time.Time `json:"printed_at,omitempty"`
-	PrintedFileName string    `json:"printed_file_name,omitempty"`
-	ReceiptIssuedAt time.Time `json:"receipt_issued_at,omitempty"`
-	ReceiptNumber   string    `json:"receipt_number,omitempty"`
+	PriceAmount     string     `json:"price_amount"`
+	PriceCurrency   string     `json:"price_currency"`
+	CustomerEmail   string     `json:"customer_email"`
+	ConfirmedAt     *time.Time `json:"confirmed_at,omitempty"`
+	RefundedAt      *time.Time `json:"refunded_at,omitempty"`
+	PrintedAt       time.Time  `json:"printed_at,omitempty"`
+	PrintedFileName string     `json:"printed_file_name,omitempty"`
+	ReceiptIssuedAt time.Time  `json:"receipt_issued_at,omitempty"`
+	ReceiptNumber   string     `json:"receipt_number,omitempty"`
 }

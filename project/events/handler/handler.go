@@ -24,6 +24,7 @@ type ReceiptsService interface {
 type TicketRepository interface {
 	Add(ctx context.Context, ticket models.Ticket) error
 	Remove(ctx context.Context, ticket models.Ticket) error
+	UpdateRefundedAt(ctx context.Context, ticketID string, refundedAt string) error
 }
 
 type FilesAPI interface {

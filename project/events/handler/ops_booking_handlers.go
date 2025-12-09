@@ -36,7 +36,9 @@ func (h *MessageHandler) OnTicketBookingConfirmed(ctx context.Context, event *ev
 		ticket.PriceAmount = event.Price.Amount
 		ticket.PriceCurrency = event.Price.Currency
 		ticket.CustomerEmail = event.CustomerEmail
-		ticket.Status = "confirmed"
+
+		now := time.Now()
+		ticket.ConfirmedAt = &now
 
 		opsBooking.Tickets[event.TicketID] = ticket
 		return nil
@@ -80,7 +82,8 @@ func (h *MessageHandler) OnTicketRefunded(ctx context.Context, event *events.Tic
 			return fmt.Errorf("ticket %s not found in booking %s (will retry)", event.TicketID, opsBooking.BookingID)
 		}
 
-		ticket.Status = "refunded"
+		now := time.Now()
+		ticket.RefundedAt = &now
 
 		opsBooking.Tickets[event.TicketID] = ticket
 		return nil

@@ -110,6 +110,10 @@ func NewEventProcessor(
 			"OnTicketRefunded",
 			msgHandler.OnTicketRefunded,
 		),
+		cqrs.NewEventHandler(
+			"UpdateRefundedTicket",
+			msgHandler.UpdateRefundedTicket,
+		),
 	)
 
 	if err != nil {
