@@ -90,7 +90,7 @@ func (h Handler) PostTicketsConfirmation(c echo.Context) error {
   	switch ticket.Status {
   		case models.TicketStatusConfirmed:
   			ticketIdempotencyKey := idempotencyKey + ticket.TicketID
-  			event := events.NewTicketBookingConfirmedWithIdempotencyKey(
+  			event := events.NewTicketBookingConfirmed_v1WithIdempotencyKey(
   				ticket.TicketID,
   				ticket.CustomerEmail,
   				ticket.Price,
@@ -100,7 +100,7 @@ func (h Handler) PostTicketsConfirmation(c echo.Context) error {
   			h.eventBus.Publish(c.Request().Context(), event)
   		case models.TicketStatusCanceled:
   			ticketIdempotencyKey := idempotencyKey + ticket.TicketID
-  			event := events.NewTicketBookingCanceledWithIdempotencyKey(
+  			event := events.NewTicketBookingCanceled_v1WithIdempotencyKey(
   				ticket.TicketID,
   				ticket.CustomerEmail,
   				ticket.Price,

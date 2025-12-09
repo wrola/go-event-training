@@ -8,7 +8,7 @@ import (
 	"tickets/entities/models"
 )
 
-func (h *MessageHandler) OnTicketPrinted(ctx context.Context, event *events.TicketPrinted) error {
+func (h *MessageHandler) OnTicketPrinted_v1(ctx context.Context, event *events.TicketPrinted_v1) error {
 	return h.opsBookingRepo.UpdateReadModelByTicketID(ctx, event.TicketID, func(opsBooking *models.OpsBooking) error {
 		ticket, exists := opsBooking.Tickets[event.TicketID]
 		if !exists {

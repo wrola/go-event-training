@@ -8,7 +8,7 @@ import (
 	"tickets/entities/events"
 )
 
-func (h MessageHandler) StoreTicketFile(ctx context.Context, event *events.TicketBookingConfirmed) error {
+func (h MessageHandler) StoreTicketFile(ctx context.Context, event *events.TicketBookingConfirmed_v1) error {
 	fileID := fmt.Sprintf("%s-ticket.html", event.TicketID)
 
 	fileContent := fmt.Sprintf(`<!DOCTYPE html>
@@ -31,7 +31,7 @@ func (h MessageHandler) StoreTicketFile(ctx context.Context, event *events.Ticke
 
 	log.FromContext(ctx).With("file_id", fileID).Info("Ticket file stored successfully")
 
-	ticketPrintedEvent := events.NewTicketPrinted(event.TicketID, fileID)
+	ticketPrintedEvent := events.NewTicketPrinted_v1(event.TicketID, fileID)
 
 	errBus := h.eventBus.Publish(ctx, ticketPrintedEvent)
 	if errBus != nil {

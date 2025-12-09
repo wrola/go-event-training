@@ -8,7 +8,7 @@ import (
 	"tickets/entities/events"
 )
 
-func (h MessageHandler) UpdateRefundedTicket(ctx context.Context, event *events.TicketRefunded) error {
+func (h MessageHandler) UpdateRefundedTicket(ctx context.Context, event *events.TicketRefunded_v1) error {
 	log.FromContext(ctx).Info("Updating refunded ticket")
 
 	now := time.Now()

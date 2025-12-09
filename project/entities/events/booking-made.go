@@ -1,6 +1,6 @@
 package events
 
-type BookingMade struct {
+type BookingMade_v1 struct {
     Header MessageHeader `json:"header"`
 
     NumberOfTickets int    `json:"number_of_tickets"`
@@ -9,8 +9,8 @@ type BookingMade struct {
     ShowID          string `json:"show_id"`
 }
 
-func NewBookingMade(bookingID string, customerEmail string, showID string, numberOfTickets int, idempotencyKey string) BookingMade {
-    return BookingMade{
+func NewBookingMade(bookingID string, customerEmail string, showID string, numberOfTickets int, idempotencyKey string) BookingMade_v1 {
+    return BookingMade_v1{
         Header: NewMessageHeaderWithIdempotencyKey(idempotencyKey),
         BookingID: bookingID,
         CustomerEmail: customerEmail,

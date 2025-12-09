@@ -9,7 +9,7 @@ import (
 	"tickets/entities/events"
 )
 
-func (h MessageHandler) BookingMadeUpdate(ctx context.Context, payload *events.BookingMade) error {
+func (h MessageHandler) BookingMadeUpdate(ctx context.Context, payload *events.BookingMade_v1) error {
 	show, err := h.showsRepository.ShowByID(ctx, payload.ShowID)
 	if err != nil {
 		return fmt.Errorf("failed to get show by ID %s: %w", payload.ShowID, err)

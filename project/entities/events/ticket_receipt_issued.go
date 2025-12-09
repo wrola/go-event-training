@@ -3,7 +3,7 @@ import (
 	"time"
 )
 
-type TicketReceiptIssued struct {
+type TicketReceiptIssued_v1 struct {
 	Header MessageHeader `json:"header"`
 
 	TicketID      string `json:"ticket_id"`
@@ -12,9 +12,9 @@ type TicketReceiptIssued struct {
 	IssuedAt time.Time `json:"issued_at"`
 }
 
-func NewTicketReceiptIssued (ticketID string, receiptNumber string, issuedAt time.Time,  idempotencyKey string) TicketReceiptIssued {
+func NewTicketReceiptIssued_v1 (ticketID string, receiptNumber string, issuedAt time.Time,  idempotencyKey string) TicketReceiptIssued_v1 {
 
-	return TicketReceiptIssued{
+	return TicketReceiptIssued_v1{
 		TicketID: ticketID,
 		ReceiptNumber: receiptNumber,
 		IssuedAt: issuedAt,

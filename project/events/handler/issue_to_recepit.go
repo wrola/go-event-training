@@ -6,7 +6,7 @@ import (
 	"tickets/entities/events"
 )
 
-func (h MessageHandler) IssueReceipt(ctx context.Context, payload *events.TicketBookingConfirmed) error {
+func (h MessageHandler) IssueReceipt(ctx context.Context, payload *events.TicketBookingConfirmed_v1) error {
 	slog.Info("Issuing receipt", "ticket_id", payload.TicketID, "customer_email", payload.CustomerEmail)
 
 	resp, err := h.receiptsService.IssueReceipt(ctx, *payload)
@@ -14,7 +14,7 @@ func (h MessageHandler) IssueReceipt(ctx context.Context, payload *events.Ticket
 		return err
 	}
 
-	receiptIssuedEvent := events.NewTicketReceiptIssued(
+	receiptIssuedEvent := events.NewTicketReceiptIssued_v1(
 		payload.TicketID,
 		resp.ReceiptNumber,
 		resp.IssuedAt,

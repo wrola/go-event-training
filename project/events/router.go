@@ -105,20 +105,20 @@ func NewEventProcessor(
 			msgHandler.OnBookingMade,
 		),
 		cqrs.NewEventHandler(
-			"OnTicketBookingConfirmed",
-			msgHandler.OnTicketBookingConfirmed,
+			"OnTicketBookingConfirmed_v1",
+			msgHandler.OnTicketBookingConfirmed_v1,
 		),
 		cqrs.NewEventHandler(
-			"OnTicketReceiptIssued",
-			msgHandler.OnTicketReceiptIssued,
+			"OnTicketReceiptIssued_v1",
+			msgHandler.OnTicketReceiptIssued_v1,
 		),
 		cqrs.NewEventHandler(
-			"OnTicketPrinted",
-			msgHandler.OnTicketPrinted,
+			"OnTicketPrinted_v1",
+			msgHandler.OnTicketPrinted_v1,
 		),
 		cqrs.NewEventHandler(
-			"OnTicketRefunded",
-			msgHandler.OnTicketRefunded,
+			"OnTicketRefunded_v1",
+			msgHandler.OnTicketRefunded_v1,
 		),
 		cqrs.NewEventHandler(
 			"UpdateRefundedTicket",

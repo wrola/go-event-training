@@ -8,7 +8,7 @@ import (
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/log"
 )
 
-func (h MessageHandler) StoreTicket(ctx context.Context, event *events.TicketBookingConfirmed) error {
+func (h MessageHandler) StoreTicket(ctx context.Context, event *events.TicketBookingConfirmed_v1) error {
 	log.FromContext(ctx).Info("Storing ticket")
 
 	now := time.Now()

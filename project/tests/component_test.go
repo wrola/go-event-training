@@ -329,7 +329,7 @@ func assertReceiptForTicketIssued(t *testing.T, receiptsService *adapters.Receip
 		100*time.Millisecond,
 	)
 
-	var receipt events.TicketBookingConfirmed
+	var receipt events.TicketBookingConfirmed_v1
 	var ok bool
 	for _, issuedReceipt := range receiptsService.IssuedReceipts {
 		if issuedReceipt.TicketID != ticket.TicketID {

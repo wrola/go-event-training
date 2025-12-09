@@ -26,7 +26,7 @@ func NewReceiptsServiceClient(clients *clients.Clients) *ReceiptsServiceClient {
 	return &ReceiptsServiceClient{clients: clients}
 }
 
-func (c ReceiptsServiceClient) IssueReceipt(ctx context.Context, request events.TicketBookingConfirmed) (entities.IssueReceiptResponse, error) {
+func (c ReceiptsServiceClient) IssueReceipt(ctx context.Context, request events.TicketBookingConfirmed_v1) (entities.IssueReceiptResponse, error) {
 	idempotencyKey := request.Header.IdempotencyKey
 	resp, err := c.clients.Receipts.PutReceiptsWithResponse(ctx, receipts.CreateReceipt{
 		IdempotencyKey: &idempotencyKey,
@@ -79,11 +79,11 @@ func (c ReceiptsServiceClient) VoidReceipt(ctx context.Context, ticketID string,
 }
 
 type ReceiptsServiceClientStub struct {
-	IssuedReceipts []events.TicketBookingConfirmed
+	IssuedReceipts []events.TicketBookingConfirmed_v1
 	lock sync.Mutex
 }
 
-func (r *ReceiptsServiceClientStub) IssueReceipt(ctx context.Context, request events.TicketBookingConfirmed) (entities.IssueReceiptResponse, error) {
+func (r *ReceiptsServiceClientStub) IssueReceipt(ctx context.Context, request events.TicketBookingConfirmed_v1) (entities.IssueReceiptResponse, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 

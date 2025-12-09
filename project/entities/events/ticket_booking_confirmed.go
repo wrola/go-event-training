@@ -2,7 +2,7 @@ package events
 
 import "tickets/entities/models"
 
-type TicketBookingConfirmed struct {
+type TicketBookingConfirmed_v1 struct {
 	Header        MessageHeader `json:"header"`
 	TicketID      string        `json:"ticket_id"`
 	CustomerEmail string        `json:"customer_email"`
@@ -10,8 +10,8 @@ type TicketBookingConfirmed struct {
 	BookingID 	string 			`json:"booking_id"`
 }
 
-func NewTicketBookingConfirmed(ticketID, customerEmail string, price models.Money, bookingID string) TicketBookingConfirmed {
-	return TicketBookingConfirmed{
+func NewTicketBookingConfirmed_v1(ticketID, customerEmail string, price models.Money, bookingID string) TicketBookingConfirmed_v1 {
+	return TicketBookingConfirmed_v1{
 		Header:        NewMessageHeader(),
 		TicketID:      ticketID,
 		CustomerEmail: customerEmail,
@@ -20,8 +20,8 @@ func NewTicketBookingConfirmed(ticketID, customerEmail string, price models.Mone
 	}
 }
 
-func NewTicketBookingConfirmedWithIdempotencyKey(ticketID, customerEmail string, price models.Money, idempotencyKey string, bookingID string) TicketBookingConfirmed {
-	return TicketBookingConfirmed{
+func NewTicketBookingConfirmed_v1WithIdempotencyKey(ticketID, customerEmail string, price models.Money, idempotencyKey string, bookingID string) TicketBookingConfirmed_v1 {
+	return TicketBookingConfirmed_v1{
 		Header:        NewMessageHeaderWithIdempotencyKey(idempotencyKey),
 		TicketID:      ticketID,
 		CustomerEmail: customerEmail,
