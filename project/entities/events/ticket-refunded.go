@@ -11,3 +11,7 @@ func NewTicketRefund (ticketId string) TicketRefunded_v1 {
 		TicketID: ticketId,
 	}
 }
+
+func (e TicketRefunded_v1) IsInternal() bool {
+	return false
+}

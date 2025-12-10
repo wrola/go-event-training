@@ -21,6 +21,13 @@ func NewEventRepository(db *sqlx.DB) EventRepository {
 	return EventRepository{db: db}
 }
 
+type StoredEvent struct {
+	EventID      uuid.UUID       `db:"event_id"`
+	PublishedAt  time.Time       `db:"published_at"`
+	EventName    string          `db:"event_name"`
+	EventPayload json.RawMessage `db:"event_payload"`
+}
+
 func (r EventRepository) StoreEvent(
 	ctx context.Context,
 	eventID string,
@@ -53,4 +60,24 @@ func (r EventRepository) StoreEvent(
 	}
 
 	return nil
+}
+
+func (r EventRepository) GetAllEvents(ctx context.Context) ([]StoredEvent, error) {
+	var events []StoredEvent
+	query := `
+		SELECT event_id, published_at, event_name, event_payload
+		FROM events
+		ORDER BY published_at ASC
+	`
+	err := r.db.SelectContext(ctx, &events, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query events: %w", err)
+	}
+	return events, nil
+}
+
+func (r EventRepository) CountEvents(ctx context.Context) (int, error) {
+	var count int
+	err := r.db.GetContext(ctx, &count, "SELECT COUNT(*) FROM events")
+	return count, err
 }

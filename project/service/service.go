@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -28,6 +29,7 @@ type Service struct {
 	commandProcessor *message.Router
 	forwarder        *forwarder.Forwarder
 	db               *sqlx.DB
+	migrator         *database.ReadModelMigrator
 }
 
 func New(
@@ -45,7 +47,6 @@ func New(
 	ticketRepository := database.NewTicketRepository(db)
 	showsRepository := database.NewShowsRepository(db)
 	bookingsRepository := database.NewBookingsRepository(db, logger)
-	opsBookingRepository := database.NewOpsBookingReadModelRespository(db)
 	eventRepository := database.NewEventRepository(db)
 
 	publisher, err := ticketsEvents.NewMessagePublisher(redisClient, logger)
@@ -53,13 +54,17 @@ func New(
 		return nil, err
 	}
 
+	eventBus := handler.NewEventBus(publisher)
+	commandBus := handler.NewCommandBus(publisher)
+
+	opsBookingRepository := database.NewOpsBookingReadModelRespository(db, eventBus)
+
+	migrator := database.NewReadModelMigrator(eventRepository, opsBookingRepository)
+
 	fwd, err := database.NewForwarder(db, publisher, logger)
 	if err != nil {
 		return nil, err
 	}
-
-	eventBus := handler.NewEventBus(publisher)
-	commandBus := handler.NewCommandBus(publisher)
 
 	echoRouter, err := ticketsHttp.NewHttpRouter(eventBus, commandBus, ticketRepository, showsRepository, bookingsRepository, opsBookingRepository )
 	if err != nil {
@@ -101,6 +106,7 @@ func New(
 		commandProcessor: commandProcessor,
 		forwarder:        fwd,
 		db:               db,
+		migrator:         migrator,
 	}, nil
 }
 
@@ -111,6 +117,19 @@ func (s *Service) Run(ctx context.Context) error {
 
 	g.Go(func() error {
 		return s.eventProcessor.Run(ctx)
+	})
+
+	g.Go(func() error {
+		// Wait for event processor to be ready
+		<-s.eventProcessor.Running()
+
+		if err := s.migrator.MigrateReadModel(ctx); err != nil {
+			fmt.Printf("ERROR: Read model migration failed: %v\n", err)
+			return err
+		}
+
+		fmt.Println("Read model migration completed successfully")
+		return nil
 	})
 
 	g.Go(func() error {

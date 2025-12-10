@@ -18,3 +18,7 @@ func NewBookingMade(bookingID string, customerEmail string, showID string, numbe
         NumberOfTickets: numberOfTickets,
     }
 }
+
+func (e BookingMade_v1) IsInternal() bool {
+    return false
+}

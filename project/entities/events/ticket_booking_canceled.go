@@ -26,3 +26,7 @@ func NewTicketBookingCanceled_v1WithIdempotencyKey(ticketID, customerEmail strin
 		Price:         price,
 	}
 }
+
+func (e TicketBookingCanceled_v1) IsInternal() bool {
+	return false
+}

@@ -58,6 +58,10 @@ func NewEventProcessor(
 		router,
 		cqrs.EventProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+				if len(params.EventName) >= 8 && params.EventName[:8] == "Internal" {
+					return "internal-events.svc-tickets." + params.EventName, nil
+				}
+
 				return "events." + params.EventName, nil
 			},
 			SubscriberConstructor: redisSubscriber,
@@ -156,7 +160,6 @@ func NewEventProcessor(
 		},
 	)
 
-	// Event Store Consumer - stores all events
 	eventStoreSubscriber, err := redisstream.NewSubscriber(
 		redisstream.SubscriberConfig{
 			Client:        redisClient,

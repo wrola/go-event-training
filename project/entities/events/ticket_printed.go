@@ -14,3 +14,7 @@ func NewTicketPrinted_v1(ticketID, fileName string) TicketPrinted_v1 {
 		FileName: fileName,
 	}
 }
+
+func (e TicketPrinted_v1) IsInternal() bool {
+	return false
+}

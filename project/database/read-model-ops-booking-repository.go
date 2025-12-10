@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
+	"tickets/entities/events"
 	"tickets/entities/models"
 )
 
@@ -19,14 +21,21 @@ type sqlExecutor interface {
 }
 
 type OpsBookingReadModelRepository struct {
-	db *sqlx.DB
+	db       *sqlx.DB
+	eventBus *cqrs.EventBus
 }
 
-func NewOpsBookingReadModelRespository(db *sqlx.DB) OpsBookingReadModelRepository {
+func NewOpsBookingReadModelRespository(db *sqlx.DB, eventBus *cqrs.EventBus) OpsBookingReadModelRepository {
 	if db == nil {
 		panic("db is nil")
 	}
-	return OpsBookingReadModelRepository{db: db}
+	if eventBus == nil {
+		panic("eventBus is nil")
+	}
+	return OpsBookingReadModelRepository{
+		db:       db,
+		eventBus: eventBus,
+	}
 }
 
 func (r OpsBookingReadModelRepository) CreateBooking(
@@ -39,9 +48,19 @@ func (r OpsBookingReadModelRepository) CreateBooking(
 		return fmt.Errorf("invalid booking_id: %w", err)
 	}
 
-	return updateInTx(ctx, r.db, sql.LevelRepeatableRead, func(ctx context.Context, tx *sqlx.Tx) error {
+	err = updateInTx(ctx, r.db, sql.LevelRepeatableRead, func(ctx context.Context, tx *sqlx.Tx) error {
 		return r.createReadModel(ctx, tx, parsedBookingID, bookedAt)
 	})
+	if err != nil {
+		return err
+	}
+
+	event := events.NewInternalOpsReadModelUpdated(bookingID)
+	if err := r.eventBus.Publish(ctx, event); err != nil {
+		fmt.Printf("WARNING: failed to publish InternalOpsReadModelUpdated: %v\n", err)
+	}
+
+	return nil
 }
 
 func (r OpsBookingReadModelRepository) createReadModel(
@@ -80,7 +99,7 @@ func (r OpsBookingReadModelRepository) UpdateReadModelByBookingID(
 	bookingID string,
 	updateFn func(*models.OpsBooking) error,
 ) error {
-	return updateInTx(ctx, r.db, sql.LevelReadCommitted, func(ctx context.Context, tx *sqlx.Tx) error {
+	err := updateInTx(ctx, r.db, sql.LevelReadCommitted, func(ctx context.Context, tx *sqlx.Tx) error {
 		opsBooking, err := r.findReadModelByBookingID(ctx, tx, bookingID, true)
 		if err != nil {
 			return err
@@ -94,6 +113,17 @@ func (r OpsBookingReadModelRepository) UpdateReadModelByBookingID(
 
 		return r.updateReadModel(ctx, tx, opsBooking)
 	})
+
+	if err != nil {
+		return err
+	}
+
+	event := events.NewInternalOpsReadModelUpdated(bookingID)
+	if err := r.eventBus.Publish(ctx, event); err != nil {
+		fmt.Printf("WARNING: failed to publish InternalOpsReadModelUpdated: %v\n", err)
+	}
+
+	return nil
 }
 
 func (r OpsBookingReadModelRepository) UpdateReadModelByTicketID(
@@ -101,7 +131,9 @@ func (r OpsBookingReadModelRepository) UpdateReadModelByTicketID(
 	ticketID string,
 	updateFn func(*models.OpsBooking) error,
 ) error {
-	return updateInTx(ctx, r.db, sql.LevelReadCommitted, func(ctx context.Context, tx *sqlx.Tx) error {
+	var bookingID string
+
+	err := updateInTx(ctx, r.db, sql.LevelReadCommitted, func(ctx context.Context, tx *sqlx.Tx) error {
 		opsBooking, err := r.findReadModelByTicketID(ctx, tx, ticketID, true)
 		if err != nil {
 			return err
@@ -112,9 +144,20 @@ func (r OpsBookingReadModelRepository) UpdateReadModelByTicketID(
 		}
 
 		opsBooking.LastUpdate = time.Now()
+		bookingID = opsBooking.BookingID.String()
 
 		return r.updateReadModel(ctx, tx, opsBooking)
 	})
+	if err != nil {
+		return err
+	}
+
+	event := events.NewInternalOpsReadModelUpdated(bookingID)
+	if err := r.eventBus.Publish(ctx, event); err != nil {
+		fmt.Printf("WARNING: failed to publish InternalOpsReadModelUpdated: %v\n", err)
+	}
+
+	return nil
 }
 
 func (r OpsBookingReadModelRepository) FindReadModelByBookingID(

@@ -21,3 +21,7 @@ func NewTicketReceiptIssued_v1 (ticketID string, receiptNumber string, issuedAt 
 		Header: NewMessageHeaderWithIdempotencyKey(idempotencyKey),
 	}
 }
+
+func (e TicketReceiptIssued_v1) IsInternal() bool {
+	return false
+}

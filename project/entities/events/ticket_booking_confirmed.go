@@ -29,3 +29,7 @@ func NewTicketBookingConfirmed_v1WithIdempotencyKey(ticketID, customerEmail stri
 		BookingID: bookingID,
 	}
 }
+
+func (e TicketBookingConfirmed_v1) IsInternal() bool {
+	return false
+}

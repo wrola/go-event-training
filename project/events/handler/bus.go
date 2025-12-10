@@ -3,6 +3,7 @@ package handler
 import (
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"tickets/entities/events"
 )
 
 func NewEventBus(pub message.Publisher) *cqrs.EventBus {
@@ -11,6 +12,10 @@ func NewEventBus(pub message.Publisher) *cqrs.EventBus {
 		pub,
 		cqrs.EventBusConfig{
 			GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
+				if internalEvent, ok := params.Event.(events.Event); ok && internalEvent.IsInternal() {
+					return "internal-events.svc-tickets." + params.EventName, nil
+				}
+
 				return "events", nil
 			},
 			Marshaler: cqrs.JSONMarshaler{
