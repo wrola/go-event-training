@@ -16,12 +16,14 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
+	"github.com/prometheus/client_golang/prometheus"
 
 	ticketsCommands "tickets/commands"
 	"tickets/database"
 	ticketsEvents "tickets/events"
 	"tickets/events/handler"
 	ticketsHttp "tickets/http"
+	"tickets/metric"
 )
 
 
@@ -72,6 +74,10 @@ func New(
 	if err != nil {
 		return nil, err
 	}
+
+	// Register Prometheus collector for outbox metrics
+	outboxCollector := metric.NewOutboxCollector(db, database.OutboxTopic)
+	prometheus.MustRegister(outboxCollector)
 
 	eventProcessor, err := ticketsEvents.NewEventProcessor(
 		receiptsService,
