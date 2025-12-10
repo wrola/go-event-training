@@ -2,7 +2,7 @@ package http
 
 import (
 	"net/http"
-
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	libHttp "github.com/ThreeDotsLabs/go-event-driven/v2/common/http"
 	"github.com/labstack/echo/v4"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
@@ -21,8 +21,10 @@ func NewHttpRouter(eventBus *cqrs.EventBus, commandBus *cqrs.CommandBus, ticketR
 	e.PUT("/ticket-refund/:ticket_id", handler.PutTicketRefund)
 	e.GET("/ops/bookings", handler.GetOpsBookings)
 	e.GET("/ops/bookings/:booking_id", handler.GetOpsBookingByID)
-	e.GET("/health", func(c echo.Context) error {
 
+	e.GET("metrics", echo.WrapHandler(promhttp.Handler()))
+	e.GET("/health", func(c echo.Context) error {
+		
 		return c.String(http.StatusOK, "ok")
 	})
 

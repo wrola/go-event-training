@@ -8,20 +8,22 @@ import (
 	"os/signal"
 	"syscall"
 
-	"golang.org/x/sync/errgroup"
 	stdHTTP "net/http"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/ThreeDotsLabs/watermill/components/forwarder"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/labstack/echo/v4"
 	"github.com/jmoiron/sqlx"
+	"github.com/labstack/echo/v4"
 
-	ticketsHttp "tickets/http"
-	ticketsEvents "tickets/events"
-	"tickets/events/handler"
 	ticketsCommands "tickets/commands"
 	"tickets/database"
+	ticketsEvents "tickets/events"
+	"tickets/events/handler"
+	ticketsHttp "tickets/http"
 )
+
 
 type Service struct {
 	echoRouter       *echo.Echo
@@ -41,7 +43,7 @@ func New(
 	db *sqlx.DB,
 ) (*Service, error) {
 
-	//TODO: refactor into container DI 
+	//TODO: refactor into container DI
 	redisClient := ticketsEvents.NewRedisClient()
 	logger := ticketsEvents.NewLogger()
 	ticketRepository := database.NewTicketRepository(db)
@@ -66,7 +68,7 @@ func New(
 		return nil, err
 	}
 
-	echoRouter, err := ticketsHttp.NewHttpRouter(eventBus, commandBus, ticketRepository, showsRepository, bookingsRepository, opsBookingRepository )
+	echoRouter, err := ticketsHttp.NewHttpRouter(eventBus, commandBus, ticketRepository, showsRepository, bookingsRepository, opsBookingRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +97,7 @@ func New(
 		paymentsService,
 		eventBus,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
