@@ -7,11 +7,7 @@ services:
     ports:
       - "8888:8080"
     environment:
-      SOLUTION_BASE_URL: "http://host.containers.internal:8080/"
-
-    # this allows webhooks from Gateway to call your solution on Linux
-    extra_hosts:
-      - "host.containers.internal:host-gateway"
+      SOLUTION_BASE_URL: "http://10.88.0.1:8080/"
 
   redis:
     image: redis:6.2-alpine
@@ -38,8 +34,6 @@ services:
     volumes:
       - ./docker/prometheus:/etc/prometheus
       - prom_data:/prometheus
-    extra_hosts:
-      - "host.containers.internal:host-gateway"
 
   grafana:
     image: grafana/grafana

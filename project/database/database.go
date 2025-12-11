@@ -2,15 +2,22 @@ package database
 
 import (
 	"os"
+
 	_ "github.com/lib/pq"
-	"github.com/jmoiron/sqlx" 
+	"github.com/jmoiron/sqlx"
+	"github.com/uptrace/opentelemetry-go-extra/otelsql"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
-func NewDatabaseConnection () (db *sqlx.DB) {
-	db, err := sqlx.Open("postgres", os.Getenv("POSTGRES_URL"))
+func NewDatabaseConnection() (db *sqlx.DB) {
+	traceDB, err := otelsql.Open("postgres", os.Getenv("POSTGRES_URL"),
+		otelsql.WithAttributes(semconv.DBSystemPostgreSQL),
+		otelsql.WithDBName("db"))
 	if err != nil {
 		panic(err)
 	}
+
+	db = sqlx.NewDb(traceDB, "postgres")
 
 	return db
 }

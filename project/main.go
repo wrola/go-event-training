@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/clients"
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/log"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"tickets/adapters"
 	"tickets/database"
@@ -23,12 +25,20 @@ func main() {
 		panic(err)
 	}
 
-	apiClients, err := clients.NewClients(
+	traceHttpClient := &http.Client{Transport: otelhttp.NewTransport(
+		http.DefaultTransport,
+		otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
+			return fmt.Sprintf("HTTP %s %s %s", r.Method, r.URL.String(), operation)
+		}),
+	)}
+
+	apiClients, err := clients.NewClientsWithHttpClient(
 		os.Getenv("GATEWAY_ADDR"),
 		func(ctx context.Context, req *http.Request) error {
 			req.Header.Set("Correlation-ID", log.CorrelationIDFromContext(ctx))
 			return nil
 		},
+		traceHttpClient,
 	)
 	if err != nil {
 		panic(err)
