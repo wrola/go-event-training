@@ -12,10 +12,16 @@ import (
 	"tickets/adapters"
 	"tickets/database"
 	"tickets/service"
+	"tickets/tracing"
 )
 
 func main() {
 	log.Init(slog.LevelInfo)
+
+	tp, err := tracing.ConfigureTraceProvider()
+	if err != nil {
+		panic(err)
+	}
 
 	apiClients, err := clients.NewClients(
 		os.Getenv("GATEWAY_ADDR"),
@@ -48,6 +54,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	svc.SetTraceProvider(tp)
 
 	err = svc.RunWithGracefulShutdown("")
 	if err != nil {

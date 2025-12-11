@@ -7,11 +7,11 @@ services:
     ports:
       - "8888:8080"
     environment:
-      SOLUTION_BASE_URL: "http://host.docker.internal:8080/"
+      SOLUTION_BASE_URL: "http://host.containers.internal:8080/"
 
     # this allows webhooks from Gateway to call your solution on Linux
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "host.containers.internal:host-gateway"
 
   redis:
     image: redis:6.2-alpine
@@ -39,7 +39,7 @@ services:
       - ./docker/prometheus:/etc/prometheus
       - prom_data:/prometheus
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "host.containers.internal:host-gateway"
 
   grafana:
     image: grafana/grafana
@@ -52,6 +52,12 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - ./docker/grafana:/etc/grafana/provisioning/datasources
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.68.0
+    ports:
+      - '16686:16686'
+      - '14268:14268'
 
 volumes:
   prom_data:

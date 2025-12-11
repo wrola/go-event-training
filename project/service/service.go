@@ -17,6 +17,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 	"github.com/prometheus/client_golang/prometheus"
+	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 
 	ticketsCommands "tickets/commands"
 	"tickets/database"
@@ -34,6 +35,7 @@ type Service struct {
 	forwarder        *forwarder.Forwarder
 	db               *sqlx.DB
 	migrator         *database.ReadModelMigrator
+	traceProvider    *tracesdk.TracerProvider
 }
 
 func New(
@@ -115,7 +117,12 @@ func New(
 		forwarder:        fwd,
 		db:               db,
 		migrator:         migrator,
+		traceProvider:    nil,
 	}, nil
+}
+
+func (s *Service) SetTraceProvider(tp *tracesdk.TracerProvider) {
+	s.traceProvider = tp
 }
 
 func (s *Service) Run(ctx context.Context) error {
@@ -169,6 +176,14 @@ func (s *Service) Run(ctx context.Context) error {
 	g.Go(func() error {
 		<-ctx.Done()
 		return s.echoRouter.Shutdown(context.Background())
+	})
+
+	g.Go(func() error {
+		<-ctx.Done()
+		if s.traceProvider != nil {
+			return s.traceProvider.Shutdown(context.Background())
+		}
+		return nil
 	})
 
 	return g.Wait()

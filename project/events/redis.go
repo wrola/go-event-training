@@ -9,6 +9,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill-redisstream/pkg/redisstream"
 	"github.com/redis/go-redis/v9"
 	"github.com/ThreeDotsLabs/go-event-driven/v2/common/log"
+	"tickets/tracing"
 )
 
 func NewRedisClient() *redis.Client {
@@ -32,7 +33,9 @@ func NewMessagePublisher(redisClient *redis.Client, logger watermill.LoggerAdapt
 		return nil, err
 	}
 
-	decoratedPublisher := log.CorrelationPublisherDecorator{Publisher: publisher}
+	var decoratedPublisher message.Publisher
+	decoratedPublisher = log.CorrelationPublisherDecorator{Publisher: publisher}
+	decoratedPublisher = tracing.NewTracePublisher(decoratedPublisher)
 
 	return decoratedPublisher, nil
 }

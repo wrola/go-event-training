@@ -7,6 +7,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	watermillSQL "github.com/ThreeDotsLabs/watermill-sql/v3/pkg/sql"
 	"github.com/jmoiron/sqlx"
+	"tickets/tracing"
 )
 
 func NewOutboxPublisher(tx *sqlx.Tx, logger watermill.LoggerAdapter) (message.Publisher, error) {
@@ -23,12 +24,14 @@ func NewOutboxPublisher(tx *sqlx.Tx, logger watermill.LoggerAdapter) (message.Pu
 	}
 
 	publisher = log.CorrelationPublisherDecorator{Publisher: sqlPublisher}
+	publisher = tracing.NewTracePublisher(publisher)
 
 	publisher = forwarder.NewPublisher(publisher, forwarder.PublisherConfig{
 		ForwarderTopic: OutboxTopic,
 	})
 
 	publisher = log.CorrelationPublisherDecorator{Publisher: publisher}
+	publisher = tracing.NewTracePublisher(publisher)
 
 	return publisher, nil
 }

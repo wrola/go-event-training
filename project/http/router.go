@@ -6,11 +6,14 @@ import (
 	libHttp "github.com/ThreeDotsLabs/go-event-driven/v2/common/http"
 	"github.com/labstack/echo/v4"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 	"tickets/database"
 )
 
 func NewHttpRouter(eventBus *cqrs.EventBus, commandBus *cqrs.CommandBus, ticketRepository database.TicketRepository, showsRepository database.ShowsRepository, bookingsRepository database.BookingsRepository, opsBookingRepository database.OpsBookingReadModelRepository) (*echo.Echo, error) {
 	e := libHttp.NewEcho()
+
+	e.Use(otelecho.Middleware("tickets"))
 
 	handler := NewHandler(eventBus, commandBus, ticketRepository, showsRepository, bookingsRepository, opsBookingRepository)
 

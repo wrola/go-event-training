@@ -1,14 +1,17 @@
 package commands
 
 import (
+	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill-redisstream/pkg/redisstream"
 	"github.com/redis/go-redis/v9"
 
 	"tickets/commands/handler"
+	ticketsMiddleware "tickets/events/middleware"
 )
 
 
@@ -26,6 +29,8 @@ func NewCommandProcessor(
 	if err != nil {
 		return nil, err
 	}
+
+	SetupMiddlewares(router)
 
 	cmdHandler := handler.NewCommandHandler(receiptsService, paymentsService, eventBus)
 
@@ -68,4 +73,18 @@ func NewSubscriberConstructor(redisClient *redis.Client, logger watermill.Logger
 				ConsumerGroup: "commands." + params.HandlerName,
 			}, logger)
 	}
+}
+
+func SetupMiddlewares(router *message.Router) {
+	router.AddMiddleware(ticketsMiddleware.AttachCorrelationIdMiddleware)
+	router.AddMiddleware(ticketsMiddleware.TracingMiddleware)
+	router.AddMiddleware(ticketsMiddleware.MetricsMiddleware)
+	router.AddMiddleware(ticketsMiddleware.SkipPermanentErrorsMiddleware)
+	router.AddMiddleware(ticketsMiddleware.HandleErrorMiddleware)
+	router.AddMiddleware(middleware.Retry{
+		MaxRetries:      10,
+		InitialInterval: time.Millisecond * 100,
+		MaxInterval:     time.Second,
+		Multiplier:      2,
+	}.Middleware)
 }

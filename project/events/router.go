@@ -181,6 +181,7 @@ func NewEventProcessor(
 
 func SetupMiddlewares(router *message.Router) {
 	router.AddMiddleware(ticketsMiddleware.AttachCorrelationIdMiddleware)
+	router.AddMiddleware(ticketsMiddleware.TracingMiddleware)
 	router.AddMiddleware(ticketsMiddleware.LogMessagesMiddleware)
 	router.AddMiddleware(ticketsMiddleware.MetricsMiddleware)
 	router.AddMiddleware(ticketsMiddleware.SkipPermanentErrorsMiddleware)
