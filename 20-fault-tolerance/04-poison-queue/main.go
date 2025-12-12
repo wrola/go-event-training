@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
+	"fmt"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
@@ -19,6 +20,14 @@ type OrderDispatched struct {
 	TrackingLink string `json:"tracking_link"`
 }
 
+type MissingTrackingLinkError struct {
+	OrderID string
+}
+
+func (e MissingTrackingLinkError) Error() string {
+	return fmt.Sprintf("order %s is missing tracking link", e.OrderID)
+}
+
 func ProcessMessages(
 	ctx context.Context,
 	sub message.Subscriber,
@@ -28,21 +37,19 @@ func ProcessMessages(
 	logger := watermill.NewSlogLogger(nil)
 	router := message.NewDefaultRouter(logger)
 
-	_, err := middleware.PoisonQueueWithFilter(pub, "PoisonQueue" , func(msg *message.Message, err error) bool {
-		var orderDispatched OrderDispatched
-		unmarshalErr := json.Unmarshal(msg.Payload, &orderDispatched)
-		if unmarshalErr != nil {
-			return true
-		}
-
-		return orderDispatched.TrackingLink == ""
-	})
-
+	poisonQueueMiddleware, err := middleware.PoisonQueueWithFilter(
+		pub,
+		"PoisonQueue",
+		func(err error) bool {
+			var missingLinkErr MissingTrackingLinkError
+			return errors.As(err, &missingLinkErr)
+		},
+	)
 	if err != nil {
 		return err
 	}
 
-	router.AddMiddleware(middleware.PoisonQueue(pub, "PoisonQueue") )
+	router.AddMiddleware(poisonQueueMiddleware)
 	ep, err := cqrs.NewEventProcessorWithConfig(
 		router,
 		cqrs.EventProcessorConfig{
@@ -62,6 +69,12 @@ func ProcessMessages(
 
 	err = ep.AddHandlers(
 		cqrs.NewEventHandler("OnOrderDispatched", func(ctx context.Context, event *OrderDispatched) error {
+			// Validate that TrackingLink is present
+			if event.TrackingLink == "" {
+				return MissingTrackingLinkError{OrderID: event.OrderID}
+			}
+
+			// Store the tracking link (may fail with temporary errors like "database is down")
 			return storage.AddTrackingLink(ctx, event.OrderID, event.TrackingLink)
 		}),
 	)
