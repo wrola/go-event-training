@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/ThreeDotsLabs/watermill"
@@ -49,19 +50,78 @@ func Test(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	originalTopic := uuid.NewString()
+	originalMessages, err := sub.Subscribe(context.Background(), originalTopic)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	var uuids []string
 	for i := 0; i < 10; i++ {
-		msg := message.NewMessage(uuid.NewString(), []byte("{}"))
+		msg := message.NewMessage(watermill.NewUUID(), []byte("{}"))
 		msg.Metadata.Set(middleware.ReasonForPoisonedKey, "network down")
+		msg.Metadata.Set(middleware.PoisonedTopicKey, originalTopic)
 		if err := pub.Publish(PoisonQueueTopic, msg); err != nil {
 			t.Fatal(err)
 		}
 		uuids = append(uuids, msg.UUID)
 	}
 
-	assertMessages(t, uuids)
-	// Check if no messages were lost
-	assertMessages(t, uuids)
+	h, err := NewHandler()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedUUIDs := []string{
+		uuids[0],
+		uuids[1],
+		uuids[2],
+		uuids[3],
+		uuids[4],
+		uuids[5],
+		uuids[6],
+		uuids[7],
+		uuids[8],
+		uuids[9],
+	}
+
+	assertMessages(t, expectedUUIDs)
+
+	requeue(t, uuids[1])
+	requeue(t, uuids[7])
+
+	h, err = NewHandler()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = h.Requeue(context.Background(), uuid.NewString())
+	if err == nil {
+		t.Fatal("expected to fail when requeuing unknown message ID")
+	}
+
+	expectedUUIDs = []string{
+		uuids[0],
+		uuids[2],
+		uuids[3],
+		uuids[4],
+		uuids[5],
+		uuids[6],
+		uuids[8],
+		uuids[9],
+	}
+
+	assertMessages(t, expectedUUIDs)
+
+	for _, expectedUUID := range []string{uuids[1], uuids[7]} {
+		select {
+		case msg := <-originalMessages:
+			if msg.UUID != expectedUUID {
+				t.Fatalf("expected message with uuid %s, got %s", expectedUUID, msg.UUID)
+			}
+			msg.Ack()
+		case <-time.After(time.Second):
+		}
+	}
 }
 
 func assertMessages(t *testing.T, expectedUUIDs []string) {
@@ -96,5 +156,19 @@ func assertMessages(t *testing.T, expectedUUIDs []string) {
 		if !found {
 			t.Fatalf("expected message with uuid %s, but not found", uuid)
 		}
+	}
+}
+
+func requeue(t *testing.T, id string) {
+	t.Helper()
+
+	h, err := NewHandler()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = h.Requeue(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
 	}
 }

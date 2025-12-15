@@ -82,11 +82,59 @@ func (h *Handler) Preview(ctx context.Context) ([]Message, error) {
 }
 
 func (h *Handler) Remove(ctx context.Context, messageID string) error {
-	return errors.New("not implemented")
+	found := false
+
+	err := h.iterate(ctx, func(msg *message.Message) (bool, error) {
+		if msg.UUID == messageID {
+			found = true
+			return false, nil 
+		}
+		return true, nil 
+	})
+	if err != nil {
+		return err
+	}
+
+	if !found {
+		return fmt.Errorf("message with ID %s not found", messageID)
+	}
+
+	return nil
 }
 
 func (h *Handler) Requeue(ctx context.Context, messageID string) error {
-	return errors.New("not implemented")
+	found := false
+
+	err := h.iterate(ctx, func(msg *message.Message) (bool, error) {
+		if msg.UUID == messageID {
+			found = true
+
+			originalTopic := msg.Metadata.Get(middleware.PoisonedTopicKey)
+
+			if originalTopic == "" {
+				return true, fmt.Errorf("message %s has no original topic in metadata", messageID)
+			}
+
+			err := h.publisher.Publish(originalTopic, msg)
+			if err != nil {
+				return true, fmt.Errorf("failed to publish message %s to topic %s: %w", messageID, originalTopic, err)
+			}
+
+			return false, nil
+		}
+
+		return true, nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if !found {
+		return fmt.Errorf("message with ID %s not found", messageID)
+	}
+
+	return nil
 }
 
 func (h *Handler) iterate(ctx context.Context, actionFunc func(msg *message.Message) (bool, error)) error {
