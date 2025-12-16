@@ -5,11 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/http"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/jmoiron/sqlx"
-	"github.com/labstack/echo/v4"
 	"github.com/lib/pq"
 
 	"tickets/entities/models"
@@ -19,6 +17,7 @@ import (
 
 var (
 	ErrBookingAlreadyExists = errors.New("booking already exists")
+    ErrNoPlacesLeft = errors.New("no places left")
 )
 
 func updateInTx(
@@ -109,11 +108,7 @@ func (b BookingsRepository) AddBooking(ctx context.Context, booking models.Booki
 
 			remainingSeats := availableSeats - alreadyBookedSeats
 			if remainingSeats < booking.NumberOfTickets {
-				return echo.NewHTTPError(
-					http.StatusBadRequest,
-					fmt.Sprintf("not enough seats available: %d requested but only %d remaining",
-						booking.NumberOfTickets, remainingSeats),
-				)
+				return ErrNoPlacesLeft
 			}
 
 			outboxPublisher, err := NewOutboxPublisher(tx, b.logger)

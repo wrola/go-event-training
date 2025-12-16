@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -186,6 +187,14 @@ func (h Handler) BookTickets(c echo.Context) error {
 
 	err := h.bookingsRepository.AddBooking(c.Request().Context(), booking)
 	if err != nil {
+		if err == database.ErrBookingAlreadyExists {
+			return echo.NewHTTPError(
+				http.StatusConflict,
+			)
+		}
+		if errors.Is(err, database.ErrNoPlacesLeft) {
+			return echo.NewHTTPError(http.StatusBadRequest, "not enough seats available")
+		}
 		return err
 	}
 

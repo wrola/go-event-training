@@ -7,6 +7,7 @@ import (
 
 	"tickets/database"
 	"tickets/entities/commands"
+	"tickets/entities/events"
 	"tickets/entities/models"
 )
 
@@ -23,7 +24,18 @@ func (h *CommandHandler) BookShowTickets(ctx context.Context, cmd *commands.Book
 		if errors.Is(err, database.ErrBookingAlreadyExists) {
 			return nil
 		}
-		
+
+		if errors.Is(err, database.ErrNoPlacesLeft) {
+			failedBooking := events.NewBookingFailed(
+				cmd.BookingID,
+				"Not enough tickets available",
+			)
+			if publishErr := h.eventBus.Publish(ctx, failedBooking); publishErr != nil {
+				return fmt.Errorf("failed to publish BookingFailed event: %w", publishErr)
+			}
+			return nil
+		}
+
 		return fmt.Errorf("failed to add booking: %w", err)
 	}
 

@@ -69,8 +69,8 @@ func NewVipBundle(
 	if showID == "" {
 		return nil, fmt.Errorf("show id must be set")
 	}
-	if len(passengers) != numberOfTickets {
-		return nil, fmt.Errorf("number of tickets (%d) and passengers count (%d) mismatch", numberOfTickets, len(passengers))
+	if len(passengers) == 0 {
+		return nil, fmt.Errorf("at least one passenger must be specified")
 	}
 	if inboundFlightID == "" {
 		return nil, fmt.Errorf("inbound flight id must be set")
