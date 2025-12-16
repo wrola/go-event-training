@@ -93,3 +93,38 @@ func NewVipBundleFinalized(vipBundleID entities.VipBundleID, success bool) VipBu
 func (e VipBundleFinalized_v1) IsInternal() bool {
 	return false
 }
+type TaxiBooked_v1 struct {
+	Header        MessageHeader `json:"header"`
+	TaxiBookingID string        `json:"taxi_booking_id"`
+	ReferenceID   string        `json:"reference_id"`
+}
+
+func NewTaxiBooked(taxiBookingID string, referenceID string) TaxiBooked_v1 {
+	return TaxiBooked_v1{
+		Header:        NewMessageHeader(),
+		TaxiBookingID: taxiBookingID,
+		ReferenceID:   referenceID,
+	}
+}
+
+func (e TaxiBooked_v1) IsInternal() bool {
+	return false
+}
+
+type TaxiBookingFailed_v1 struct {
+	Header        MessageHeader `json:"header"`
+	FailureReason string        `json:"failure_reason"`
+	ReferenceID   string        `json:"reference_id"`
+}
+
+func NewTaxiBookingFailed(reason string, referenceID string) TaxiBookingFailed_v1 {
+	return TaxiBookingFailed_v1{
+		Header:        NewMessageHeader(),
+		FailureReason: reason,
+		ReferenceID:   referenceID,
+	}
+}
+
+func (e TaxiBookingFailed_v1) IsInternal() bool {
+	return false
+}

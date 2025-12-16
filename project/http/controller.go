@@ -90,6 +90,7 @@ type BookTicketsResponse struct {
 type VipBundleRequest struct {
 	CustomerEmail   string   `json:"customer_email"`
 	InboundFlightID string   `json:"inbound_flight_id"`
+	ReturnFlightID  string   `json:"return_flight_id"`
 	NumberOfTickets int      `json:"number_of_tickets"`
 	Passengers      []string `json:"passengers"`
 	ShowID          string   `json:"show_id"`
@@ -288,6 +289,7 @@ func (h Handler) BookVipBundle(c echo.Context) error {
 		request.ShowID,
 		request.Passengers,
 		request.InboundFlightID,
+		request.ReturnFlightID,
 	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())

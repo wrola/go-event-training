@@ -41,10 +41,18 @@ type VipBundle struct {
 
 	Passengers []string `json:"passengers"`
 
-	InboundFlightID uuid.UUID `json:"inbound_flight_id"`
+	InboundFlightID         uuid.UUID   `json:"inbound_flight_id"`
+	InboundFlightTicketsIDs []uuid.UUID `json:"inbound_flight_tickets_ids"`
+
+	ReturnFlightID         uuid.UUID   `json:"return_flight_id"`
+	ReturnFlightTicketsIDs []uuid.UUID `json:"return_flight_tickets_ids"`
+	ReturnFlightBookedAt   *time.Time  `json:"return_flight_booked_at"`
+
+	TaxiBookingID *uuid.UUID `json:"taxi_booking_id"`
+	TaxiBookedAt  *time.Time `json:"taxi_booked_at"`
 
 	IsFinalized bool `json:"is_finalized"`
-	Failed 	bool `json:"failed"`
+	Failed      bool `json:"failed"`
 }
 
 func NewVipBundle(
@@ -55,6 +63,7 @@ func NewVipBundle(
 	showId uuid.UUID,
 	passengers []string,
 	inboundFlightID uuid.UUID,
+	returnFlightID uuid.UUID,
 ) (*VipBundle, error) {
 	if vipBundleID.UUID == uuid.Nil {
 		return nil, fmt.Errorf("vip bundle id must be set")
@@ -77,6 +86,9 @@ func NewVipBundle(
 	if inboundFlightID == uuid.Nil {
 		return nil, fmt.Errorf("inbound flight id must be set")
 	}
+	if returnFlightID == uuid.Nil {
+		return nil, fmt.Errorf("return flight id must be set")
+	}
 
 	return &VipBundle{
 		VipBundleID:     vipBundleID,
@@ -86,6 +98,7 @@ func NewVipBundle(
 		ShowId:          showId,
 		Passengers:      passengers,
 		InboundFlightID: inboundFlightID,
+		ReturnFlightID:  returnFlightID,
 	}, nil
 }
 
@@ -181,28 +194,70 @@ func (v VipBundleProcessManager) OnBookingMade(ctx context.Context, event *Booki
 func (v VipBundleProcessManager) OnFlightBooked(ctx context.Context, event *FlightBooked_v1) error {
 	vipBundleID := MustParseBundleID(event.ReferenceID)
 
-	vipBundle, err := v.repository.UpdateByID(
-		ctx,
-		vipBundleID,
-		func(vipBundle VipBundle) (VipBundle, error) {
-			vipBundle.IsFinalized = true
-			vipBundle.TicketIDs = event.TicketIDs
-			return vipBundle, nil
-		},
-	)
+	vipBundle, err := v.repository.Get(ctx, vipBundleID)
 	if err != nil {
-		return fmt.Errorf("failed to update vip bundle %s: %w", vipBundleID, err)
+		return fmt.Errorf("failed to get vip bundle %s: %w", vipBundleID, err)
 	}
 
-	finalizedEvent := VipBundleFinalized_v1{
-		Header:      NewMessageHeader(),
-		VipBundleID: vipBundle.VipBundleID,
-		Success:     true,
-	}
+	isInboundFlight := event.FlightID == vipBundle.InboundFlightID
+	isReturnFlight := event.FlightID == vipBundle.ReturnFlightID
 
-	err = v.eventBus.Publish(ctx, finalizedEvent)
-	if err != nil {
-		return fmt.Errorf("failed to publish VipBundleFinalized_v1 event: %w", err)
+	if isInboundFlight {
+		vipBundle, err = v.repository.UpdateByID(
+			ctx,
+			vipBundleID,
+			func(vipBundle VipBundle) (VipBundle, error) {
+				vipBundle.InboundFlightTicketsIDs = event.TicketIDs
+				return vipBundle, nil
+			},
+		)
+		if err != nil {
+			return fmt.Errorf("failed to update vip bundle %s: %w", vipBundleID, err)
+		}
+
+		idempotencyKey := uuid.NewString()
+		cmd := BookFlight{
+			CustomerEmail:  vipBundle.CustomerEmail,
+			FlightID:       vipBundle.ReturnFlightID,
+			Passengers:     vipBundle.Passengers,
+			ReferenceID:    vipBundle.VipBundleID.String(),
+			IdempotencyKey: idempotencyKey,
+		}
+
+		err = v.commandBus.Send(ctx, cmd)
+		if err != nil {
+			return fmt.Errorf("failed to send BookFlight command for return flight: %w", err)
+		}
+	} else if isReturnFlight {
+		vipBundle, err = v.repository.UpdateByID(
+			ctx,
+			vipBundleID,
+			func(vipBundle VipBundle) (VipBundle, error) {
+				vipBundle.ReturnFlightTicketsIDs = event.TicketIDs
+				now := time.Now()
+				vipBundle.ReturnFlightBookedAt = &now
+				return vipBundle, nil
+			},
+		)
+		if err != nil {
+			return fmt.Errorf("failed to update vip bundle %s: %w", vipBundleID, err)
+		}
+
+		idempotencyKey := uuid.NewString()
+		cmd := BookTaxi{
+			CustomerEmail:      vipBundle.CustomerEmail,
+			CustomerName:       vipBundle.Passengers[0],
+			NumberOfPassengers: vipBundle.NumberOfTickets,
+			ReferenceID:        vipBundle.VipBundleID.String(),
+			IdempotencyKey:     idempotencyKey,
+		}
+
+		err = v.commandBus.Send(ctx, cmd)
+		if err != nil {
+			return fmt.Errorf("failed to send BookTaxi command: %w", err)
+		}
+	} else {
+		return fmt.Errorf("unknown flight id %s for vip bundle %s", event.FlightID, vipBundleID)
 	}
 
 	return nil
@@ -282,6 +337,17 @@ func (v VipBundleProcessManager) OnFlightBookingFailed(ctx context.Context, even
 		)
 	}
 
+	if len(vipBundle.InboundFlightTicketsIDs) > 0 {
+		cmd := CancelFlightTickets{
+			FlightTicketIDs: vipBundle.InboundFlightTicketsIDs,
+		}
+
+		err = v.commandBus.Send(ctx, cmd)
+		if err != nil {
+			return fmt.Errorf("failed to send CancelFlightTickets command: %w", err)
+		}
+	}
+
 	for _, ticketID := range vipBundle.TicketIDs {
 		cmd := RefundTicket{
 			Header:   NewMessageHeader(),
@@ -291,6 +357,107 @@ func (v VipBundleProcessManager) OnFlightBookingFailed(ctx context.Context, even
 		err = v.commandBus.Send(ctx, cmd)
 		if err != nil {
 			return fmt.Errorf("failed to send RefundTicket command for ticket %s: %w", ticketID, err)
+		}
+	}
+
+	vipBundle, err = v.repository.UpdateByID(
+		ctx,
+		vipBundleID,
+		func(vipBundle VipBundle) (VipBundle, error) {
+			vipBundle.IsFinalized = true
+			vipBundle.Failed = true
+			return vipBundle, nil
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update vip bundle %s: %w", vipBundleID, err)
+	}
+
+	finalizedEvent := VipBundleFinalized_v1{
+		Header:      NewMessageHeader(),
+		VipBundleID: vipBundle.VipBundleID,
+		Success:     false,
+	}
+
+	err = v.eventBus.Publish(ctx, finalizedEvent)
+	if err != nil {
+		return fmt.Errorf("failed to publish VipBundleFinalized_v1 event: %w", err)
+	}
+
+	return nil
+}
+
+func (v VipBundleProcessManager) OnTaxiBooked(ctx context.Context, event *TaxiBooked_v1) error {
+	vipBundleID := MustParseBundleID(event.ReferenceID)
+
+	vipBundle, err := v.repository.UpdateByID(
+		ctx,
+		vipBundleID,
+		func(vipBundle VipBundle) (VipBundle, error) {
+			vipBundle.TaxiBookingID = &event.TaxiBookingID
+			now := time.Now()
+			vipBundle.TaxiBookedAt = &now
+			vipBundle.IsFinalized = true
+			return vipBundle, nil
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update vip bundle %s: %w", vipBundleID, err)
+	}
+
+	finalizedEvent := VipBundleFinalized_v1{
+		Header:      NewMessageHeader(),
+		VipBundleID: vipBundle.VipBundleID,
+		Success:     true,
+	}
+
+	err = v.eventBus.Publish(ctx, finalizedEvent)
+	if err != nil {
+		return fmt.Errorf("failed to publish VipBundleFinalized_v1 event: %w", err)
+	}
+
+	return nil
+}
+
+func (v VipBundleProcessManager) OnTaxiBookingFailed(ctx context.Context, event *TaxiBookingFailed_v1) error {
+	vipBundleID := MustParseBundleID(event.ReferenceID)
+
+	vipBundle, err := v.repository.Get(ctx, vipBundleID)
+	if err != nil {
+		return fmt.Errorf("failed to get vip bundle %s: %w", vipBundleID, err)
+	}
+
+	for _, ticketID := range vipBundle.TicketIDs {
+		cmd := RefundTicket{
+			Header:   NewMessageHeader(),
+			TicketID: ticketID.String(),
+		}
+
+		err = v.commandBus.Send(ctx, cmd)
+		if err != nil {
+			return fmt.Errorf("failed to send RefundTicket command for ticket %s: %w", ticketID, err)
+		}
+	}
+
+	if len(vipBundle.InboundFlightTicketsIDs) > 0 {
+		cmd := CancelFlightTickets{
+			FlightTicketIDs: vipBundle.InboundFlightTicketsIDs,
+		}
+
+		err = v.commandBus.Send(ctx, cmd)
+		if err != nil {
+			return fmt.Errorf("failed to send CancelFlightTickets command for inbound flight: %w", err)
+		}
+	}
+
+	if len(vipBundle.ReturnFlightTicketsIDs) > 0 {
+		cmd := CancelFlightTickets{
+			FlightTicketIDs: vipBundle.ReturnFlightTicketsIDs,
+		}
+
+		err = v.commandBus.Send(ctx, cmd)
+		if err != nil {
+			return fmt.Errorf("failed to send CancelFlightTickets command for return flight: %w", err)
 		}
 	}
 

@@ -114,3 +114,31 @@ type CommandBus interface {
 type EventBus interface {
 	Publish(ctx context.Context, event any) error
 }
+
+type BookTaxi struct {
+	CustomerEmail      string `json:"customer_email"`
+	CustomerName       string `json:"customer_name"`
+	NumberOfPassengers int    `json:"number_of_passengers"`
+	ReferenceID        string `json:"reference_id"`
+	IdempotencyKey     string `json:"idempotency_key"`
+}
+
+type CancelFlightTickets struct {
+	FlightTicketIDs []uuid.UUID `json:"flight_ticket_id"`
+}
+
+type TaxiBooked_v1 struct {
+	Header MessageHeader `json:"header"`
+
+	TaxiBookingID uuid.UUID `json:"taxi_booking_id"`
+
+	ReferenceID string `json:"reference_id"`
+}
+
+type TaxiBookingFailed_v1 struct {
+	Header MessageHeader `json:"header"`
+
+	FailureReason string `json:"failure_reason"`
+
+	ReferenceID string `json:"reference_id"`
+}

@@ -161,6 +161,14 @@ func NewEventProcessor(
 			"VipBundlePM_OnFlightBookingFailed",
 			vipBundlePM.OnFlightBookingFailed,
 		),
+		cqrs.NewEventHandler(
+			"VipBundlePM_OnTaxiBooked",
+			vipBundlePM.OnTaxiBooked,
+		),
+		cqrs.NewEventHandler(
+			"VipBundlePM_OnTaxiBookingFailed",
+			vipBundlePM.OnTaxiBookingFailed,
+		),
 	)
 	if err != nil {
 		return nil, err

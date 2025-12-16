@@ -40,9 +40,18 @@ type VipBundle struct {
 	BookingMadeAt   *time.Time  `json:"booking_made_at"`
 	TicketIDs       []string    `json:"ticket_ids"`
 	Passengers      []string    `json:"passengers"`
-	InboundFlightID string      `json:"inbound_flight_id"`
-	IsFinalized     bool        `json:"is_finalized"`
-	Failed          bool        `json:"failed"`
+
+	InboundFlightID         string    `json:"inbound_flight_id"`
+	InboundFlightTicketsIDs []string  `json:"inbound_flight_tickets_ids"`
+	ReturnFlightID          string    `json:"return_flight_id"`
+	ReturnFlightTicketsIDs  []string  `json:"return_flight_tickets_ids"`
+	ReturnFlightBookedAt    *time.Time `json:"return_flight_booked_at"`
+
+	TaxiBookingID *string    `json:"taxi_booking_id"`
+	TaxiBookedAt  *time.Time `json:"taxi_booked_at"`
+
+	IsFinalized bool `json:"is_finalized"`
+	Failed      bool `json:"failed"`
 }
 
 func NewVipBundle(
@@ -53,6 +62,7 @@ func NewVipBundle(
 	showID string,
 	passengers []string,
 	inboundFlightID string,
+	returnFlightID string,
 ) (*VipBundle, error) {
 	if vipBundleID.UUID == uuid.Nil {
 		return nil, fmt.Errorf("vip bundle id must be set")
@@ -75,6 +85,9 @@ func NewVipBundle(
 	if inboundFlightID == "" {
 		return nil, fmt.Errorf("inbound flight id must be set")
 	}
+	if returnFlightID == "" {
+		return nil, fmt.Errorf("return flight id must be set")
+	}
 
 	return &VipBundle{
 		VipBundleID:     vipBundleID,
@@ -84,6 +97,7 @@ func NewVipBundle(
 		ShowID:          showID,
 		Passengers:      passengers,
 		InboundFlightID: inboundFlightID,
+		ReturnFlightID:  returnFlightID,
 		TicketIDs:       []string{},
 		BookingMadeAt:   nil,
 		IsFinalized:     false,

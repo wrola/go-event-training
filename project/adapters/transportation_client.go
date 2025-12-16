@@ -12,6 +12,7 @@ import (
 
 type TransportationService interface {
 	BookFlight(ctx context.Context, customerEmail, flightID string, passengers []string, referenceID, idempotencyKey string) ([]string, error)
+	CancelFlightTickets(ctx context.Context, ticketIDs []string) error
 }
 
 type TransportationServiceClient struct {
@@ -62,12 +63,43 @@ func (c TransportationServiceClient) BookFlight(
 			reason = resp.JSON400.Error
 		}
 		return nil, &PermanentFlightBookingError{reason: reason}
+	case http.StatusConflict:
+		return nil, &PermanentFlightBookingError{reason: "no flight tickets available"}
 	default:
 		return nil, fmt.Errorf(
 			"unexpected status code for PUT transportation-api/transportation/flight-tickets: %d",
 			resp.StatusCode(),
 		)
 	}
+}
+
+func (c TransportationServiceClient) CancelFlightTickets(ctx context.Context, ticketIDs []string) error {
+	for _, ticketID := range ticketIDs {
+		ticketUUID, err := uuid.Parse(ticketID)
+		if err != nil {
+			return fmt.Errorf("invalid ticket ID %s: %w", ticketID, err)
+		}
+
+		resp, err := c.clients.Transportation.DeleteFlightTicketsTicketIdWithResponse(ctx, ticketUUID)
+		if err != nil {
+			return fmt.Errorf("failed to cancel flight ticket %s: %w", ticketID, err)
+		}
+
+		switch resp.StatusCode() {
+		case http.StatusNoContent:
+			continue
+		case http.StatusNotFound:
+			continue
+		default:
+			return fmt.Errorf(
+				"unexpected status code for DELETE transportation-api/transportation/flight-tickets/%s: %d",
+				ticketID,
+				resp.StatusCode(),
+			)
+		}
+	}
+
+	return nil
 }
 
 type PermanentFlightBookingError struct {

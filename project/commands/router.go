@@ -68,6 +68,10 @@ func NewCommandProcessor(
 			"BookFlightHandler",
 			cmdHandler.BookFlight,
 		),
+		cqrs.NewCommandHandler(
+			"CancelFlightTicketsHandler",
+			cmdHandler.CancelFlightTickets,
+		),
 	)
 	if err != nil {
 		return nil, err
