@@ -94,7 +94,6 @@ func New(
 		return nil, err
 	}
 
-	// Register Prometheus collector for outbox metrics
 	outboxCollector := metric.NewOutboxCollector(db, database.OutboxTopic)
 	prometheus.MustRegister(outboxCollector)
 

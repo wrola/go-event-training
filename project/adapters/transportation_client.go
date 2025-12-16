@@ -13,6 +13,7 @@ import (
 type TransportationService interface {
 	BookFlight(ctx context.Context, customerEmail, flightID string, passengers []string, referenceID, idempotencyKey string) ([]string, error)
 	CancelFlightTickets(ctx context.Context, ticketIDs []string) error
+	BookTaxi(ctx context.Context, customerEmail, customerName string, numberOfPassengers int, referenceID, idempotencyKey string) (string, error)
 }
 
 type TransportationServiceClient struct {
@@ -112,4 +113,53 @@ func (e *PermanentFlightBookingError) Error() string {
 
 func (e *PermanentFlightBookingError) IsPermanent() bool {
 	return true
+}
+
+type PermanentTaxiBookingError struct {
+	reason string
+}
+
+func (e *PermanentTaxiBookingError) Error() string {
+	return fmt.Sprintf("permanent taxi booking error: %s", e.reason)
+}
+
+func (e *PermanentTaxiBookingError) IsPermanent() bool {
+	return true
+}
+
+func (c TransportationServiceClient) BookTaxi(
+	ctx context.Context,
+	customerEmail, customerName string,
+	numberOfPassengers int,
+	referenceID, idempotencyKey string,
+) (string, error) {
+	resp, err := c.clients.Transportation.PutTaxiBookingWithResponse(ctx, transportation.TaxiBookingRequest{
+		CustomerEmail:      customerEmail,
+		PassengerName:      customerName,
+		NumberOfPassengers: numberOfPassengers,
+		ReferenceId:        referenceID,
+		IdempotencyKey:     idempotencyKey,
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to book taxi: %w", err)
+	}
+
+	switch resp.StatusCode() {
+	case http.StatusCreated:
+		return resp.JSON201.BookingId.String(), nil
+	case http.StatusBadRequest:
+		reason := "bad request"
+		if resp.JSON400 != nil && resp.JSON400.Error != "" {
+			reason = resp.JSON400.Error
+		}
+		return "", &PermanentTaxiBookingError{reason: reason}
+	case http.StatusConflict:
+		return "", &PermanentTaxiBookingError{reason: "no taxis available"}
+	default:
+		return "", fmt.Errorf(
+			"unexpected status code for PUT transportation-api/transportation/taxi-booking: %d",
+			resp.StatusCode(),
+		)
+	}
 }

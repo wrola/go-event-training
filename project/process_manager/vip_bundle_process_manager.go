@@ -232,7 +232,6 @@ func (pm *VipBundleProcessManager) OnFlightBookingFailed(ctx context.Context, ev
 		)
 	}
 
-	// Cancel inbound flight if return flight booking failed
 	if len(vipBundle.InboundFlightTicketsIDs) > 0 {
 		cmd := commands.NewCancelFlightTickets(vipBundle.InboundFlightTicketsIDs)
 
@@ -242,7 +241,6 @@ func (pm *VipBundleProcessManager) OnFlightBookingFailed(ctx context.Context, ev
 		}
 	}
 
-	// Refund show tickets
 	for _, ticketID := range vipBundle.TicketIDs {
 		cmd := commands.NewRefundTicket(ticketID)
 		err = pm.commandBus.Send(ctx, cmd)
@@ -309,7 +307,6 @@ func (pm *VipBundleProcessManager) OnTaxiBookingFailed(ctx context.Context, even
 		return fmt.Errorf("failed to get vip bundle %s: %w", vipBundleID, err)
 	}
 
-	// Refund show tickets
 	for _, ticketID := range vipBundle.TicketIDs {
 		cmd := commands.NewRefundTicket(ticketID)
 
@@ -329,7 +326,6 @@ func (pm *VipBundleProcessManager) OnTaxiBookingFailed(ctx context.Context, even
 		}
 	}
 
-	// Cancel return flight tickets
 	if len(vipBundle.ReturnFlightTicketsIDs) > 0 {
 		cmd := commands.NewCancelFlightTickets(vipBundle.ReturnFlightTicketsIDs)
 
