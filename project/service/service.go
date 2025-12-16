@@ -12,6 +12,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/ThreeDotsLabs/go-event-driven/v2/common/clients"
 	"github.com/ThreeDotsLabs/watermill/components/forwarder"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/jmoiron/sqlx"
@@ -19,6 +20,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 
+	"tickets/adapters"
 	ticketsCommands "tickets/commands"
 	"tickets/database"
 	ticketsEvents "tickets/events"
@@ -39,6 +41,7 @@ type Service struct {
 }
 
 func New(
+	apiClients *clients.Clients,
 	spreadsheetsAPI handler.SpreadsheetsAPI,
 	receiptsService handler.ReceiptsService,
 	paymentsService handler.PaymentsService,
@@ -54,6 +57,12 @@ func New(
 	showsRepository := database.NewShowsRepository(db)
 	bookingsRepository := database.NewBookingsRepository(db, logger)
 	eventRepository := database.NewEventRepository(db)
+	vipBundleRepository := database.NewVipBundleRepository(db, logger)
+
+	var transportationService adapters.TransportationService
+	if apiClients != nil {
+		transportationService = adapters.NewTransportationServiceClient(apiClients)
+	}
 
 	publisher, err := ticketsEvents.NewMessagePublisher(redisClient, logger)
 	if err != nil {
@@ -72,7 +81,15 @@ func New(
 		return nil, err
 	}
 
-	echoRouter, err := ticketsHttp.NewHttpRouter(eventBus, commandBus, ticketRepository, showsRepository, bookingsRepository, opsBookingRepository)
+	echoRouter, err := ticketsHttp.NewHttpRouter(
+		eventBus,
+		commandBus,
+		ticketRepository,
+		showsRepository,
+		bookingsRepository,
+		opsBookingRepository,
+		vipBundleRepository,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -91,8 +108,10 @@ func New(
 		logger,
 		ticketRepository,
 		eventBus,
+		commandBus,
 		opsBookingRepository,
 		eventRepository,
+		vipBundleRepository,
 	)
 	if err != nil {
 		return nil, err
@@ -103,7 +122,9 @@ func New(
 		logger,
 		receiptsService,
 		paymentsService,
+		transportationService,
 		eventBus,
+		bookingsRepository,
 	)
 
 	if err != nil {

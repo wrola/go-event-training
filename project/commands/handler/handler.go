@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 
+	"tickets/adapters"
+	"tickets/database"
 	"tickets/entities"
 	"tickets/entities/commands"
 	"tickets/entities/events"
@@ -20,12 +22,20 @@ type PaymentsService interface {
 }
 
 type CommandHandler struct {
-	receiptsService ReceiptsService
-	paymentsService PaymentsService
-	eventBus 		*cqrs.EventBus
+	receiptsService       ReceiptsService
+	paymentsService       PaymentsService
+	transportationService adapters.TransportationService
+	eventBus              *cqrs.EventBus
+	bookingsRepository    database.BookingsRepository
 }
 
-func NewCommandHandler(receiptsService ReceiptsService, paymentsService PaymentsService, eventBus *cqrs.EventBus) *CommandHandler {
+func NewCommandHandler(
+	receiptsService ReceiptsService,
+	paymentsService PaymentsService,
+	transportationService adapters.TransportationService,
+	eventBus *cqrs.EventBus,
+	bookingsRepository database.BookingsRepository,
+) *CommandHandler {
 	if receiptsService == nil {
 		panic("receiptsService is required")
 	}
@@ -37,8 +47,10 @@ func NewCommandHandler(receiptsService ReceiptsService, paymentsService Payments
 	}
 
 	return &CommandHandler{
-		receiptsService: receiptsService,
-		paymentsService: paymentsService,
-		eventBus: eventBus,
+		receiptsService:       receiptsService,
+		paymentsService:       paymentsService,
+		transportationService: transportationService,
+		eventBus:              eventBus,
+		bookingsRepository:    bookingsRepository,
 	}
 }

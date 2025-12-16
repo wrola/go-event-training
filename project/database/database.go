@@ -58,6 +58,12 @@ CREATE TABLE IF NOT EXISTS bookings (
     FOREIGN KEY (show_id) REFERENCES shows(show_id)
 );
 
+CREATE TABLE IF NOT EXISTS vip_bundles (
+    vip_bundle_id UUID PRIMARY KEY,
+    booking_id UUID UNIQUE NOT NULL,
+    payload JSONB NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS read_model_ops_bookings (
     booking_id UUID PRIMARY KEY,
     payload JSONB NOT NULL

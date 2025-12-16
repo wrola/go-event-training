@@ -10,24 +10,41 @@ import (
 	"tickets/database"
 )
 
-func NewHttpRouter(eventBus *cqrs.EventBus, commandBus *cqrs.CommandBus, ticketRepository database.TicketRepository, showsRepository database.ShowsRepository, bookingsRepository database.BookingsRepository, opsBookingRepository database.OpsBookingReadModelRepository) (*echo.Echo, error) {
+func NewHttpRouter(
+	eventBus *cqrs.EventBus,
+	commandBus *cqrs.CommandBus,
+	ticketRepository database.TicketRepository,
+	showsRepository database.ShowsRepository,
+	bookingsRepository database.BookingsRepository,
+	opsBookingRepository database.OpsBookingReadModelRepository,
+	vipBundleRepository database.VipBundleRepository,
+) (*echo.Echo, error) {
 	e := libHttp.NewEcho()
 
 	e.Use(otelecho.Middleware("tickets"))
 
-	handler := NewHandler(eventBus, commandBus, ticketRepository, showsRepository, bookingsRepository, opsBookingRepository)
+	handler := NewHandler(
+		eventBus,
+		commandBus,
+		ticketRepository,
+		showsRepository,
+		bookingsRepository,
+		opsBookingRepository,
+		vipBundleRepository,
+	)
 
 	e.GET("/tickets", handler.GetAllTickets)
 	e.POST("/tickets-status", handler.PostTicketsConfirmation)
 	e.POST("/shows", handler.CreateShow)
 	e.POST("/book-tickets", handler.BookTickets)
+	e.POST("/book-vip-bundle", handler.BookVipBundle)
 	e.PUT("/ticket-refund/:ticket_id", handler.PutTicketRefund)
 	e.GET("/ops/bookings", handler.GetOpsBookings)
 	e.GET("/ops/bookings/:booking_id", handler.GetOpsBookingByID)
 
 	e.GET("metrics", echo.WrapHandler(promhttp.Handler()))
 	e.GET("/health", func(c echo.Context) error {
-		
+
 		return c.String(http.StatusOK, "ok")
 	})
 

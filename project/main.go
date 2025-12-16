@@ -54,6 +54,7 @@ func main() {
 	defer db.Close()
 
 	svc, err := service.New(
+		apiClients,
 		spreadsheetsAPI,
 		receiptsService,
 		paymentsService,

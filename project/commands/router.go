@@ -10,7 +10,9 @@ import (
 	"github.com/ThreeDotsLabs/watermill-redisstream/pkg/redisstream"
 	"github.com/redis/go-redis/v9"
 
+	"tickets/adapters"
 	"tickets/commands/handler"
+	"tickets/database"
 	ticketsMiddleware "tickets/events/middleware"
 )
 
@@ -22,7 +24,9 @@ func NewCommandProcessor(
 	logger watermill.LoggerAdapter,
 	receiptsService handler.ReceiptsService,
 	paymentsService handler.PaymentsService,
+	transportationService adapters.TransportationService,
 	eventBus *cqrs.EventBus,
+	bookingsRepository database.BookingsRepository,
 ) (*message.Router, error) {
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
@@ -32,7 +36,7 @@ func NewCommandProcessor(
 
 	SetupMiddlewares(router)
 
-	cmdHandler := handler.NewCommandHandler(receiptsService, paymentsService, eventBus)
+	cmdHandler := handler.NewCommandHandler(receiptsService, paymentsService, transportationService, eventBus, bookingsRepository)
 
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
 		router,
@@ -55,6 +59,14 @@ func NewCommandProcessor(
 		cqrs.NewCommandHandler(
 			"RefundTicketHandler",
 			cmdHandler.RefundTicket,
+		),
+		cqrs.NewCommandHandler(
+			"BookShowTicketsHandler",
+			cmdHandler.BookShowTickets,
+		),
+		cqrs.NewCommandHandler(
+			"BookFlightHandler",
+			cmdHandler.BookFlight,
 		),
 	)
 	if err != nil {

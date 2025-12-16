@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"tickets/database"
+	"tickets/entities"
 	"tickets/entities/commands"
 	"tickets/entities/events"
 	"tickets/entities/models"
@@ -17,15 +18,24 @@ import (
 )
 
 type Handler struct {
-	eventBus           *cqrs.EventBus
-	commandBus         *cqrs.CommandBus
-	ticketRepository   database.TicketRepository
-	showsRepository    database.ShowsRepository
-	bookingsRepository database.BookingsRepository
+	eventBus             *cqrs.EventBus
+	commandBus           *cqrs.CommandBus
+	ticketRepository     database.TicketRepository
+	showsRepository      database.ShowsRepository
+	bookingsRepository   database.BookingsRepository
 	opsBookingRepository database.OpsBookingReadModelRepository
+	vipBundleRepository  database.VipBundleRepository
 }
 
-func NewHandler(eventBus *cqrs.EventBus, commandBus *cqrs.CommandBus, ticketRepository database.TicketRepository, showsRepository database.ShowsRepository, bookingsRepository database.BookingsRepository, opsBookingRepository database.OpsBookingReadModelRepository) Handler {
+func NewHandler(
+	eventBus *cqrs.EventBus,
+	commandBus *cqrs.CommandBus,
+	ticketRepository database.TicketRepository,
+	showsRepository database.ShowsRepository,
+	bookingsRepository database.BookingsRepository,
+	opsBookingRepository database.OpsBookingReadModelRepository,
+	vipBundleRepository database.VipBundleRepository,
+) Handler {
 	if eventBus == nil {
 		panic("eventBus is required")
 	}
@@ -40,6 +50,7 @@ func NewHandler(eventBus *cqrs.EventBus, commandBus *cqrs.CommandBus, ticketRepo
 		showsRepository:      showsRepository,
 		bookingsRepository:   bookingsRepository,
 		opsBookingRepository: opsBookingRepository,
+		vipBundleRepository:  vipBundleRepository,
 	}
 }
 
@@ -73,6 +84,19 @@ type BookTicketsRequest struct {
 
 type BookTicketsResponse struct {
 	BookingID string `json:"booking_id"`
+}
+
+type VipBundleRequest struct {
+	CustomerEmail   string   `json:"customer_email"`
+	InboundFlightID string   `json:"inbound_flight_id"`
+	NumberOfTickets int      `json:"number_of_tickets"`
+	Passengers      []string `json:"passengers"`
+	ShowID          string   `json:"show_id"`
+}
+
+type VipBundleResponse struct {
+	BookingID   string `json:"booking_id"`
+	VipBundleID string `json:"vip_bundle_id"`
 }
 
 func (h Handler) PostTicketsConfirmation(c echo.Context) error {
@@ -234,4 +258,42 @@ func (h Handler) GetOpsBookingByID(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, opsBooking)
+}
+
+func (h Handler) BookVipBundle(c echo.Context) error {
+	var request VipBundleRequest
+	if err := c.Bind(&request); err != nil {
+		return err
+	}
+
+	// Generate IDs
+	vipBundleID := entities.NewVipBundleID()
+	bookingID := uuid.NewString()
+
+	// Create VIP bundle entity
+	vipBundle, err := entities.NewVipBundle(
+		vipBundleID,
+		bookingID,
+		request.CustomerEmail,
+		request.NumberOfTickets,
+		request.ShowID,
+		request.Passengers,
+		request.InboundFlightID,
+	)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	// Store VIP bundle and emit VipBundleInitialized event
+	err = h.vipBundleRepository.Add(c.Request().Context(), *vipBundle)
+	if err != nil {
+		return err
+	}
+
+	response := VipBundleResponse{
+		BookingID:   bookingID,
+		VipBundleID: vipBundleID.String(),
+	}
+
+	return c.JSON(http.StatusCreated, response)
 }

@@ -1,4 +1,4 @@
-package database 
+package database
 
 import (
 	"context"
@@ -10,10 +10,15 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
+	"github.com/lib/pq"
 
 	"tickets/entities/models"
 	"tickets/entities/events"
 	"tickets/events/handler"
+)
+
+var (
+	ErrBookingAlreadyExists = errors.New("booking already exists")
 )
 
 func updateInTx(
@@ -63,8 +68,21 @@ func (b BookingsRepository) AddBooking(ctx context.Context, booking models.Booki
 		b.db,
 		sql.LevelSerializable,
 		func(ctx context.Context, tx *sqlx.Tx) error {
+			_, err := tx.NamedExecContext(ctx, `
+				INSERT INTO
+					bookings (booking_id, show_id, number_of_tickets, customer_email)
+				VALUES (:booking_id, :show_id, :number_of_tickets, :customer_email)
+			`, booking)
+			if err != nil {
+				var pqErr *pq.Error
+				if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+					return ErrBookingAlreadyExists
+				}
+				return fmt.Errorf("could not add booking: %w", err)
+			}
+
 			availableSeats := 0
-			err := tx.GetContext(ctx, &availableSeats, `
+			err = tx.GetContext(ctx, &availableSeats, `
 				SELECT
 					number_of_tickets AS available_seats
 				FROM
@@ -98,15 +116,6 @@ func (b BookingsRepository) AddBooking(ctx context.Context, booking models.Booki
 				)
 			}
 
-			_, err = tx.NamedExecContext(ctx, `
-				INSERT INTO
-					bookings (booking_id, show_id, number_of_tickets, customer_email)
-				VALUES (:booking_id, :show_id, :number_of_tickets, :customer_email)
-			`, booking)
-			if err != nil {
-				return fmt.Errorf("could not add booking: %w", err)
-			}
-
 			outboxPublisher, err := NewOutboxPublisher(tx, b.logger)
 			if err != nil {
 				return fmt.Errorf("could not create outbox publisher: %w", err)
@@ -119,7 +128,7 @@ func (b BookingsRepository) AddBooking(ctx context.Context, booking models.Booki
 				booking.CustomerEmail,
 				booking.ShowID,
 				booking.NumberOfTickets,
-				booking.BookingID, 
+				booking.BookingID,
 			)
 
 			err = eventBus.Publish(ctx, bookingMadeEvent)

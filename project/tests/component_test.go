@@ -36,6 +36,7 @@ func TestComponent(t *testing.T) {
 
 	go func() {
 		svc, err := service.New(
+			nil,
 			spreadsheetsAPI,
 			receiptsService,
 			paymentsService,

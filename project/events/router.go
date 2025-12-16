@@ -13,6 +13,7 @@ import (
 	"tickets/database"
 	"tickets/events/handler"
 	ticketsMiddleware "tickets/events/middleware"
+	"tickets/process_manager"
 )
 
 func NewEventProcessor(
@@ -25,8 +26,10 @@ func NewEventProcessor(
 	logger watermill.LoggerAdapter,
 	ticketRepository database.TicketRepository,
 	eventBus *cqrs.EventBus,
+	commandBus *cqrs.CommandBus,
 	opsBookingRepository database.OpsBookingReadModelRepository,
 	eventRepository database.EventRepository,
+	vipBundleRepository database.VipBundleRepository,
 ) (*message.Router, error) {
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
@@ -46,6 +49,12 @@ func NewEventProcessor(
 		eventBus,
 		opsBookingRepository,
 		eventRepository,
+	)
+
+	vipBundlePM := process_manager.NewVipBundleProcessManager(
+		commandBus,
+		eventBus,
+		vipBundleRepository,
 	)
 
 	redisSubscriber := NewSubscriberConstructor(redisClient, logger)
@@ -127,6 +136,30 @@ func NewEventProcessor(
 		cqrs.NewEventHandler(
 			"UpdateRefundedTicket",
 			msgHandler.UpdateRefundedTicket,
+		),
+		cqrs.NewEventHandler(
+			"VipBundlePM_OnVipBundleInitialized",
+			vipBundlePM.OnVipBundleInitialized,
+		),
+		cqrs.NewEventHandler(
+			"VipBundlePM_OnBookingMade",
+			vipBundlePM.OnBookingMade,
+		),
+		cqrs.NewEventHandler(
+			"VipBundlePM_OnTicketBookingConfirmed",
+			vipBundlePM.OnTicketBookingConfirmed,
+		),
+		cqrs.NewEventHandler(
+			"VipBundlePM_OnBookingFailed",
+			vipBundlePM.OnBookingFailed,
+		),
+		cqrs.NewEventHandler(
+			"VipBundlePM_OnFlightBooked",
+			vipBundlePM.OnFlightBooked,
+		),
+		cqrs.NewEventHandler(
+			"VipBundlePM_OnFlightBookingFailed",
+			vipBundlePM.OnFlightBookingFailed,
 		),
 	)
 	if err != nil {
