@@ -1,6 +1,6 @@
 module 14-message-ordering/05-independent-updates
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/IBM/sarama v1.45.1
@@ -37,8 +37,8 @@ require (
 	go.opentelemetry.io/otel v1.35.0 // indirect
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
-	golang.org/x/crypto v0.38.0 // indirect
-	golang.org/x/net v0.40.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/sync v0.14.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 )
